@@ -196,38 +196,61 @@ function DoorPlaque({
 }) {
   return (
     <group position={position} rotation={rotation}>
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[0.74, 0.32, 0.03]} />
+      <mesh position={[0, 0, -0.006]}>
+        <boxGeometry args={[0.76, 0.36, 0.014]} />
         <meshStandardMaterial
-          color={highlighted ? "#f7e7a6" : "#e2c98a"}
-          roughness={0.36}
-          metalness={0.5}
-          emissive={highlighted ? "#f7d77d" : "#8a6733"}
-          emissiveIntensity={highlighted ? 0.44 : 0.18}
+          color={highlighted ? "#fde8a4" : "#d9b86f"}
+          roughness={0.58}
+          metalness={0.22}
+          emissive={highlighted ? "#f7d77d" : "#745427"}
+          emissiveIntensity={highlighted ? 0.28 : 0.12}
         />
       </mesh>
-      <mesh position={[0, 0.105, 0.018]}>
-        <boxGeometry args={[0.34, 0.07, 0.016]} />
+      <mesh position={[0, 0, 0.008]}>
+        <boxGeometry args={[0.68, 0.28, 0.018]} />
         <meshStandardMaterial
-          color={highlighted ? "#fff3c2" : "#f4dfab"}
-          roughness={0.32}
-          metalness={0.18}
+          color={highlighted ? "#fff7da" : "#f4e4b8"}
+          roughness={0.34}
+          metalness={0.14}
+        />
+      </mesh>
+      {[
+        [-0.28, 0.1],
+        [0.28, 0.1],
+        [-0.28, -0.1],
+        [0.28, -0.1],
+      ].map(([x, y]) => (
+        <mesh key={`${x}-${y}`} position={[x, y, 0.02]}>
+          <cylinderGeometry args={[0.012, 0.012, 0.018, 12]} />
+          <meshStandardMaterial
+            color="#7d6237"
+            roughness={0.22}
+            metalness={0.82}
+          />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.11, 0.022]}>
+        <boxGeometry args={[0.34, 0.046, 0.012]} />
+        <meshStandardMaterial
+          color={highlighted ? "#fff0b7" : "#e8d28f"}
+          roughness={0.42}
+          metalness={0.16}
         />
       </mesh>
       <Text
-        position={[0, 0.055, 0.024]}
-        fontSize={0.122}
-        color={highlighted ? "#33210b" : "#432c12"}
+        position={[0, 0.047, 0.03]}
+        fontSize={0.108}
+        color={highlighted ? "#34230d" : "#442c14"}
         anchorX="center"
         anchorY="middle"
       >
         {label}
       </Text>
       <Text
-        position={[0, -0.075, 0.024]}
-        fontSize={0.086}
-        color={highlighted ? "#3a260d" : "#4b3418"}
-        maxWidth={0.62}
+        position={[0, -0.082, 0.03]}
+        fontSize={0.07}
+        color={highlighted ? "#432d12" : "#5a3f18"}
+        maxWidth={0.56}
         anchorX="center"
         anchorY="middle"
       >
@@ -281,14 +304,14 @@ function SwingDoor({
   const plaquePosition: readonly [number, number, number] | null = plaque
     ? alongZ
       ? [
-          plaque.side === "negative" ? -0.05 : 0.05,
-          1.62,
+          plaque.side === "negative" ? -0.036 : 0.036,
+          1.54,
           width * 0.5,
         ]
       : [
           width * 0.5,
-          1.62,
-          plaque.side === "negative" ? -0.05 : 0.05,
+          1.54,
+          plaque.side === "negative" ? -0.036 : 0.036,
         ]
     : null;
 
@@ -423,20 +446,31 @@ function NeighborDoorProp({
       <mesh position={[0, 1.08, 0]}>
         <boxGeometry args={[1.14, 2.24, 0.12]} />
         <meshStandardMaterial
-          color="#293340"
+          color="#344655"
           roughness={0.86}
           metalness={0.06}
+        />
+      </mesh>
+      <mesh
+        position={[0, 0.018, frontFacingNorth ? 0.62 : -0.62]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        <planeGeometry args={[0.82, 0.24]} />
+        <meshStandardMaterial
+          color={highlighted ? "#7c5764" : "#5a4750"}
+          roughness={0.94}
+          metalness={0.02}
         />
       </mesh>
       <group ref={doorLeafRef} position={[-0.5, 0, 0]}>
         <mesh position={[0.5, 1.08, 0]}>
           <boxGeometry args={[1.0, 2.16, 0.08]} />
           <meshStandardMaterial
-            color={highlighted ? "#5c7f8f" : "#4a6070"}
-            roughness={0.74}
+            color={highlighted ? "#6a8da2" : "#5f778d"}
+            roughness={0.7}
             metalness={0.06}
-            emissive={highlighted ? "#c88d64" : "#18242d"}
-            emissiveIntensity={highlighted ? 0.28 : 0.12}
+            emissive={highlighted ? "#d59873" : "#1f2f3b"}
+            emissiveIntensity={highlighted ? 0.24 : 0.1}
           />
         </mesh>
         <mesh
@@ -445,7 +479,7 @@ function NeighborDoorProp({
         >
           <planeGeometry args={[0.82, 1.92]} />
           <meshStandardMaterial
-            color={highlighted ? "#bdd8e0" : "#c6d5db"}
+            color={highlighted ? "#dceef4" : "#d2dee4"}
             roughness={0.72}
             metalness={0.04}
           />
@@ -460,7 +494,7 @@ function NeighborDoorProp({
         >
           <boxGeometry args={[0.36, 0.12, 0.024]} />
           <meshStandardMaterial
-            color="#dbe9ef"
+            color="#edf5f8"
             roughness={0.68}
             metalness={0.08}
           />
@@ -475,7 +509,7 @@ function NeighborDoorProp({
         >
           <boxGeometry args={[0.08, 0.58, 0.018]} />
           <meshStandardMaterial
-            color="#614d3d"
+            color="#81624e"
             roughness={0.9}
             metalness={0.03}
           />
@@ -490,9 +524,9 @@ function NeighborDoorProp({
         >
           <boxGeometry args={[0.18, 0.06, 0.018]} />
           <meshStandardMaterial
-            color="#e6c57b"
-            roughness={0.26}
-            metalness={0.82}
+            color="#f6de93"
+            roughness={0.22}
+            metalness={0.74}
           />
         </mesh>
         <mesh
@@ -517,6 +551,33 @@ function NeighborDoorProp({
           highlighted={highlighted}
         />
       </group>
+    </group>
+  );
+}
+
+function CorridorDividerProp({
+  position,
+}: {
+  position: readonly [number, number, number];
+}) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 1.12, 0]}>
+        <boxGeometry args={[0.1, 2.24, 0.18]} />
+        <meshStandardMaterial
+          color="#253543"
+          roughness={0.84}
+          metalness={0.06}
+        />
+      </mesh>
+      <mesh position={[0, 0.12, 0]}>
+        <boxGeometry args={[0.16, 0.22, 0.22]} />
+        <meshStandardMaterial
+          color="#2d4150"
+          roughness={0.78}
+          metalness={0.08}
+        />
+      </mesh>
     </group>
   );
 }
@@ -1910,11 +1971,11 @@ export function Room() {
         thickness={sceneLayout.apartmentDoor.thickness}
         open={apartmentDoorOpen}
         openAngle={-1.28}
-        leafColor="#6f5842"
-        panelColor="#cbdce4"
-        trimColor="#445768"
-        accentColor="#dcc08d"
-        knobColor="#f3d186"
+        leafColor="#5f7f92"
+        panelColor="#edf7fb"
+        trimColor="#2d4a5d"
+        accentColor="#f4d48f"
+        knobColor="#ffe49c"
         plaque={{
           label: sceneLayout.apartmentDoor.unitId,
           residentName: sceneLayout.apartmentDoor.residentName,
@@ -1929,12 +1990,25 @@ export function Room() {
         open={buildingExitDoorOpen}
         openAngle={1.18}
         alongZ
-        leafColor="#3f5f7b"
-        panelColor="#d6ebf3"
-        trimColor="#21455e"
-        accentColor="#a2c4d4"
-        knobColor="#f6df8f"
+        leafColor="#5f7f92"
+        panelColor="#f0faf8"
+        trimColor="#305367"
+        accentColor="#bddbbd"
+        knobColor="#ffe49c"
       />
+
+      {sceneLayout.corridor.moduleBoundaries.map((boundaryX) => (
+        <CorridorDividerProp
+          key={`south-divider-${boundaryX}`}
+          position={[boundaryX, 0, corridorSouthZ]}
+        />
+      ))}
+      {sceneLayout.corridor.moduleBoundaries.map((boundaryX) => (
+        <CorridorDividerProp
+          key={`north-divider-${boundaryX}`}
+          position={[boundaryX, 0, corridorNorthZ]}
+        />
+      ))}
 
       {sceneLayout.nearSideNeighborDoors.map((door) => (
         <NeighborDoorProp

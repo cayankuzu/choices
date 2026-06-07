@@ -50,13 +50,13 @@ const narrationTiming = {
 } as const;
 
 const hudPrimaryButtonClass =
-  "font-hud-sans rounded-[1.4rem] border border-rose-200/45 bg-[linear-gradient(135deg,rgba(255,153,196,0.9),rgba(255,215,126,0.92))] px-5 py-4 text-left text-slate-950 shadow-[0_18px_38px_rgba(244,114,182,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_48px_rgba(244,114,182,0.28)]";
+  "font-hud-sans rounded-[1.55rem] border border-white/54 bg-[linear-gradient(135deg,rgba(255,245,226,0.94)_0%,rgba(255,181,212,0.92)_34%,rgba(255,214,134,0.94)_66%,rgba(126,226,255,0.9)_100%)] px-5 py-4 text-left text-slate-950 shadow-[0_24px_64px_rgba(244,114,182,0.24)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_30px_78px_rgba(56,189,248,0.22)]";
 
 const hudSecondaryButtonClass =
-  "font-hud-sans rounded-[1.4rem] border border-sky-950/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(220,245,255,0.72))] px-5 py-4 text-left text-slate-950 shadow-[0_16px_34px_rgba(14,165,233,0.14)] transition hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(209,240,255,0.82))]";
+  "font-hud-sans rounded-[1.55rem] border border-white/46 bg-[linear-gradient(135deg,rgba(255,255,255,0.9)_0%,rgba(229,249,255,0.84)_44%,rgba(233,255,236,0.8)_100%)] px-5 py-4 text-left text-slate-950 shadow-[0_20px_54px_rgba(14,165,233,0.16)] transition duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(218,245,255,0.88)_42%,rgba(242,255,228,0.84)_100%)]";
 
 const hudRoundButtonClass =
-  "font-hud-sans rounded-full border border-sky-950/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.84),rgba(220,245,255,0.72))] px-4 py-2 text-sm text-slate-950 shadow-[0_14px_30px_rgba(14,165,233,0.14)] transition hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(206,237,255,0.82))]";
+  "font-hud-sans rounded-full border border-white/44 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(225,245,255,0.8)_56%,rgba(255,239,214,0.84)_100%)] px-4 py-2 text-sm text-slate-950 shadow-[0_16px_40px_rgba(14,165,233,0.14)] transition duration-200 hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(214,240,255,0.9)_50%,rgba(255,233,198,0.9)_100%)]";
 
 function getCollapsePhaseDurationMs(phase: CollapsePhase) {
   if (phase === "idle" || phase === "blackout") {
@@ -346,11 +346,11 @@ function ShortcutRow({
   description: string;
 }) {
   return (
-    <div className="hud-panel flex items-center justify-between gap-4 rounded-[1.6rem] border border-white/30 bg-[linear-gradient(135deg,rgba(255,255,255,0.74),rgba(238,250,255,0.58))] px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
-      <span className="font-hud-sans text-xs uppercase tracking-[0.28em] text-sky-950/72">
+    <div className="hud-panel flex items-center justify-between gap-4 rounded-[1.45rem] border border-white/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(238,246,255,0.78)_54%,rgba(255,241,216,0.76)_100%)] px-4 py-3 shadow-[0_18px_50px_rgba(7,18,29,0.18)]">
+      <span className="font-hud-sans text-xs uppercase tracking-[0.28em] text-sky-950/68">
         {keys}
       </span>
-      <span className="font-hud-sans text-sm text-slate-900/88">
+      <span className="font-hud-sans text-sm text-slate-900/86">
         {description}
       </span>
     </div>
@@ -403,6 +403,53 @@ function HudLadybug({ className }: { className: string }) {
   );
 }
 
+function HudButterfly({ className }: { className: string }) {
+  return (
+    <div className={className}>
+      <div className="relative h-10 w-12 animate-[hud-drift_10s_ease-in-out_infinite]">
+        <span className="absolute left-[14%] top-[22%] h-6 w-4 rounded-[80%_20%_70%_30%/60%_30%_70%_40%] bg-[linear-gradient(180deg,#8ce7ff,#7bc4ff)] opacity-90 shadow-[0_0_18px_rgba(123,196,255,0.32)]" />
+        <span className="absolute right-[14%] top-[22%] h-6 w-4 rounded-[20%_80%_30%_70%/30%_60%_40%_70%] bg-[linear-gradient(180deg,#ffd4a8,#ff9dd0)] opacity-92 shadow-[0_0_18px_rgba(255,157,208,0.28)]" />
+        <span className="absolute left-[22%] top-[48%] h-5 w-3 rounded-[70%_30%_80%_20%/70%_30%_80%_20%] bg-[linear-gradient(180deg,#b7ffba,#8ce7ff)] opacity-88" />
+        <span className="absolute right-[22%] top-[48%] h-5 w-3 rounded-[30%_70%_20%_80%/30%_70%_20%_80%] bg-[linear-gradient(180deg,#ffd783,#ffb2cb)] opacity-88" />
+        <span className="absolute left-1/2 top-[30%] h-6 w-[3px] -translate-x-1/2 rounded-full bg-slate-900/70" />
+      </div>
+    </div>
+  );
+}
+
+function GardenHudLayer({ subdued = false }: { subdued?: boolean }) {
+  return (
+    <div
+      className={[
+        "pointer-events-none absolute inset-0 z-[15] overflow-hidden transition-opacity duration-500",
+        subdued ? "opacity-50" : "opacity-100",
+      ].join(" ")}
+    >
+      <div className="absolute -left-24 top-12 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(255,168,206,0.24)_0%,rgba(255,168,206,0.08)_42%,transparent_72%)] blur-3xl" />
+      <div className="absolute right-[-4rem] top-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(126,226,255,0.22)_0%,rgba(126,226,255,0.08)_44%,transparent_72%)] blur-3xl" />
+      <div className="absolute bottom-[-5rem] left-[18%] h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(199,255,152,0.18)_0%,rgba(199,255,152,0.06)_44%,transparent_72%)] blur-3xl" />
+      <HudFlower
+        className="absolute left-8 top-10 opacity-90"
+        petalColor="linear-gradient(135deg,#ff9fc7,#ffd78a)"
+        centerColor="#fff4b3"
+      />
+      <HudFlower
+        className="absolute right-10 top-28 scale-[0.88] opacity-85"
+        petalColor="linear-gradient(135deg,#8ce7ff,#9effbc)"
+        centerColor="#fff2ba"
+      />
+      <HudFlower
+        className="absolute bottom-24 left-[14%] scale-[0.78] opacity-80"
+        petalColor="linear-gradient(135deg,#ffd6a0,#ff9ec7)"
+        centerColor="#fff3c6"
+      />
+      <HudLadybug className="absolute bottom-28 right-[16%] opacity-70" />
+      <HudButterfly className="absolute right-[22%] top-14 opacity-80" />
+      <HudButterfly className="absolute left-[24%] bottom-20 scale-[0.82] opacity-65" />
+    </div>
+  );
+}
+
 function OverlayCard({
   title,
   subtitle,
@@ -413,20 +460,21 @@ function OverlayCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="hud-panel hud-grid font-hud-sans w-full max-w-3xl rounded-[2.2rem] border border-white/50 bg-white/90 p-6 text-slate-950 shadow-[0_30px_120px_rgba(15,23,42,0.28)] backdrop-blur-2xl sm:p-8">
+    <div className="hud-panel hud-grid font-hud-sans w-full max-w-3xl rounded-[2.35rem] border border-white/32 bg-[linear-gradient(145deg,rgba(14,24,36,0.86)_0%,rgba(42,28,63,0.84)_52%,rgba(21,66,82,0.8)_100%)] p-6 text-slate-50 shadow-[0_34px_130px_rgba(4,12,22,0.34)] backdrop-blur-2xl sm:p-8">
       <HudFlower
-        className="pointer-events-none absolute -left-3 -top-3 opacity-90"
+        className="pointer-events-none absolute -left-3 -top-3 opacity-92"
         petalColor="linear-gradient(135deg,#ff9ec7,#ffcf7b)"
         centerColor="#fff4b8"
       />
       <HudFlower
-        className="pointer-events-none absolute -right-1 bottom-3 scale-[0.78] opacity-85"
+        className="pointer-events-none absolute -right-1 bottom-3 scale-[0.78] opacity-88"
         petalColor="linear-gradient(135deg,#7ee2ff,#9effb7)"
         centerColor="#fff0a4"
       />
-      <HudLadybug className="pointer-events-none absolute right-16 top-5 opacity-80" />
+      <HudLadybug className="pointer-events-none absolute right-16 top-5 opacity-78" />
+      <HudButterfly className="pointer-events-none absolute left-20 bottom-5 opacity-70" />
       <div className="relative z-10">
-        <p className="font-hud-sans text-xs uppercase tracking-[0.38em] text-pink-100/78">
+        <p className="font-hud-sans text-xs uppercase tracking-[0.38em] text-pink-100/74">
         {subtitle}
         </p>
         <h2 className="font-hud-display mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
@@ -1744,7 +1792,7 @@ export function GameOverlay({
   const transcriptPanel = (
     <div
       className={[
-        "hud-panel font-hud-sans mx-auto w-full max-w-6xl rounded-[2rem] border border-white/18 bg-[linear-gradient(135deg,rgba(12,16,34,0.9),rgba(34,18,52,0.82)_54%,rgba(16,44,61,0.76)_100%)] shadow-[0_20px_70px_rgba(15,23,42,0.34)] backdrop-blur-2xl transition-[padding] duration-300",
+        "hud-panel font-hud-sans mx-auto w-full max-w-6xl rounded-[2.2rem] border border-white/24 bg-[linear-gradient(135deg,rgba(13,20,35,0.9)_0%,rgba(49,28,70,0.84)_42%,rgba(17,72,92,0.82)_100%)] shadow-[0_24px_90px_rgba(4,12,22,0.34)] backdrop-blur-2xl transition-[padding] duration-300",
         textPanelExpanded ? "pointer-events-auto p-4 sm:p-5" : "px-4 py-3 sm:px-5 sm:py-4",
       ].join(" ")}
     >
@@ -1805,6 +1853,7 @@ export function GameOverlay({
 
   return (
     <>
+      <GardenHudLayer subdued={collapseActive || paused || externallyFrozen} />
       <EyeOpeningOverlay phase={introPhase} />
       <NeuralBlackoutOverlay phase={collapsePhase} />
 
@@ -2038,7 +2087,7 @@ export function GameOverlay({
         <div className="absolute right-4 top-4 z-40">
           <button
             type="button"
-            className="pointer-events-auto font-hud-sans rounded-full border border-white/34 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(205,240,255,0.72))] px-4 py-2 text-xs uppercase tracking-[0.28em] text-slate-950 shadow-[0_16px_34px_rgba(14,165,233,0.18)] transition hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(193,233,255,0.82))]"
+            className="pointer-events-auto font-hud-sans rounded-full border border-white/44 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(225,245,255,0.8)_54%,rgba(255,234,201,0.84)_100%)] px-4 py-2 text-xs uppercase tracking-[0.28em] text-slate-950 shadow-[0_20px_40px_rgba(14,165,233,0.18)] transition hover:-translate-y-0.5 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(212,240,255,0.88)_48%,rgba(255,225,181,0.9)_100%)]"
             onClick={onCloseParallel}
           >
             Bu Evreni Kapat
@@ -2058,10 +2107,10 @@ export function GameOverlay({
                       key={slot.id}
                       type="button"
                       className={[
-                        "pointer-events-auto hud-panel font-hud-sans rounded-[1.5rem] border px-4 py-3 text-left transition",
+                        "pointer-events-auto hud-panel font-hud-sans rounded-[1.65rem] border px-4 py-3 text-left transition duration-200",
                         slot.active
-                          ? "border-rose-200/44 bg-[linear-gradient(135deg,rgba(255,174,201,0.28),rgba(255,220,143,0.26))] shadow-[0_0_26px_rgba(244,114,182,0.2)]"
-                          : "border-white/16 bg-[linear-gradient(135deg,rgba(14,18,36,0.76),rgba(24,39,60,0.72))] hover:bg-[linear-gradient(135deg,rgba(18,24,46,0.84),rgba(31,49,74,0.78))]",
+                          ? "border-white/40 bg-[linear-gradient(135deg,rgba(255,208,229,0.42)_0%,rgba(255,232,172,0.34)_44%,rgba(148,233,255,0.34)_100%)] shadow-[0_0_34px_rgba(244,114,182,0.18)]"
+                          : "border-white/18 bg-[linear-gradient(135deg,rgba(14,18,36,0.8),rgba(31,22,53,0.72)_46%,rgba(23,50,70,0.72)_100%)] hover:bg-[linear-gradient(135deg,rgba(18,24,46,0.88),rgba(40,27,65,0.82)_48%,rgba(28,62,80,0.82)_100%)]",
                       ].join(" ")}
                       onClick={() => setEquippedItem(slot.id)}
                     >
@@ -2075,7 +2124,7 @@ export function GameOverlay({
                   ))}
               </div>
 
-              <div className="font-hud-sans rounded-full border border-white/18 bg-[linear-gradient(135deg,rgba(11,18,38,0.82),rgba(42,19,55,0.78))] px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-pink-50/84 shadow-[0_12px_36px_rgba(15,23,42,0.28)]">
+              <div className="font-hud-sans rounded-full border border-white/22 bg-[linear-gradient(135deg,rgba(18,28,48,0.84),rgba(58,31,76,0.8)_54%,rgba(22,80,90,0.76)_100%)] px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-pink-50/86 shadow-[0_16px_44px_rgba(4,12,22,0.32)]">
                 {equippedItem === "gun"
                   ? "Q bırak / Tekerlek / 1-2 geçiş"
                   : "M metin / Esc duraklat"}
@@ -2088,7 +2137,7 @@ export function GameOverlay({
           !externallyFrozen &&
           promptText &&
           !paused ? (
-            <div className="font-hud-sans self-start rounded-full border border-white/24 bg-[linear-gradient(135deg,rgba(17,23,45,0.82),rgba(16,67,88,0.7))] px-4 py-2 text-xs uppercase tracking-[0.28em] text-cyan-50/88 shadow-[0_12px_36px_rgba(15,23,42,0.28)]">
+            <div className="font-hud-sans self-start rounded-full border border-white/26 bg-[linear-gradient(135deg,rgba(19,31,53,0.84),rgba(28,95,109,0.78)_52%,rgba(72,53,102,0.76)_100%)] px-4 py-2 text-xs uppercase tracking-[0.28em] text-cyan-50/88 shadow-[0_16px_42px_rgba(4,12,22,0.3)]">
               {interactionMenuOpen ? "Seçenekler açık" : promptText}
             </div>
           ) : null}
@@ -2097,7 +2146,7 @@ export function GameOverlay({
           !collapseActive &&
           !externallyFrozen &&
           objectiveText ? (
-            <div className="font-hud-sans self-start rounded-full border border-rose-100/24 bg-[linear-gradient(135deg,rgba(255,166,194,0.26),rgba(255,213,122,0.2))] px-4 py-2 text-xs uppercase tracking-[0.24em] text-amber-50/90 shadow-[0_12px_36px_rgba(190,24,93,0.18)]">
+            <div className="font-hud-sans self-start rounded-full border border-white/26 bg-[linear-gradient(135deg,rgba(255,164,196,0.3),rgba(255,216,134,0.26)_48%,rgba(126,226,255,0.2)_100%)] px-4 py-2 text-xs uppercase tracking-[0.24em] text-amber-50/92 shadow-[0_16px_42px_rgba(190,24,93,0.18)]">
               {objectiveText}
             </div>
           ) : null}
@@ -2106,7 +2155,7 @@ export function GameOverlay({
           !collapseActive &&
           !externallyFrozen &&
           menuOptions.length > 0 ? (
-            <div className="hud-panel font-hud-sans w-full rounded-[2rem] border border-white/30 bg-[linear-gradient(145deg,rgba(255,249,239,0.88),rgba(230,246,255,0.76)_48%,rgba(247,230,255,0.72)_100%)] p-4 text-slate-950 shadow-[0_22px_70px_rgba(15,23,42,0.24)] backdrop-blur-2xl">
+            <div className="hud-panel font-hud-sans w-full rounded-[2.1rem] border border-white/34 bg-[linear-gradient(145deg,rgba(255,250,241,0.92),rgba(232,247,255,0.82)_44%,rgba(249,234,255,0.8)_100%)] p-4 text-slate-950 shadow-[0_26px_82px_rgba(4,12,22,0.26)] backdrop-blur-2xl">
               <div className="flex items-center justify-between gap-4">
                 <p className="text-xs uppercase tracking-[0.32em] text-fuchsia-950/58">
                   {promptLabel}
@@ -2121,10 +2170,10 @@ export function GameOverlay({
                     key={option.id}
                     type="button"
                     className={[
-                      "font-hud-sans rounded-[1.5rem] border px-4 py-4 text-left text-sm transition",
+                      "font-hud-sans rounded-[1.6rem] border px-4 py-4 text-left text-sm transition duration-200",
                       interactionMenuIndex === index
-                        ? "border-rose-200/54 bg-[linear-gradient(135deg,rgba(255,160,193,0.88),rgba(255,214,126,0.9))] text-slate-950 shadow-[0_0_28px_rgba(244,114,182,0.18)]"
-                        : "border-sky-950/10 bg-white/52 text-slate-900 hover:bg-white/72",
+                        ? "border-white/54 bg-[linear-gradient(135deg,rgba(255,171,203,0.92),rgba(255,220,140,0.94)_52%,rgba(140,230,255,0.84)_100%)] text-slate-950 shadow-[0_0_34px_rgba(244,114,182,0.16)]"
+                        : "border-sky-950/10 bg-white/56 text-slate-900 hover:bg-white/76",
                     ].join(" ")}
                     onMouseEnter={() => setInteractionMenuIndex(index)}
                     onClick={() => {

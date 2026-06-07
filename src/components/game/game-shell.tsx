@@ -541,10 +541,13 @@ function MouseSurface({
       onMouseMove={updateLook}
     >
       {canLook ? (
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2">
-          <span className="absolute left-1/2 top-0 h-5 w-px -translate-x-1/2 bg-pink-100/78" />
-          <span className="absolute left-0 top-1/2 h-px w-5 -translate-y-1/2 bg-cyan-50/72" />
-          <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffe789] shadow-[0_0_16px_rgba(255,231,137,0.48)]" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2">
+          <span className="absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/28 bg-white/5 shadow-[0_0_22px_rgba(126,226,255,0.18)]" />
+          <span className="absolute left-1/2 top-[12%] h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[linear-gradient(180deg,#ffb5d6,#ffe48f)] shadow-[0_0_14px_rgba(255,181,214,0.45)]" />
+          <span className="absolute left-[12%] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[linear-gradient(180deg,#8ce7ff,#b3ffbf)] shadow-[0_0_14px_rgba(140,231,255,0.4)]" />
+          <span className="absolute bottom-[12%] left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[linear-gradient(180deg,#ffd88f,#ffb6d7)] shadow-[0_0_14px_rgba(255,216,143,0.36)]" />
+          <span className="absolute right-[12%] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[linear-gradient(180deg,#96e5ff,#ffe1a8)] shadow-[0_0_14px_rgba(150,229,255,0.4)]" />
+          <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#fff4b0] shadow-[0_0_18px_rgba(255,244,176,0.58)]" />
         </div>
       ) : null}
     </div>
@@ -650,7 +653,7 @@ export function GameShell({
     <KeyboardControls map={controlMap}>
       <main
         ref={shellRef}
-        className="grid h-full min-h-0 w-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,153,196,0.12),transparent_24%),radial-gradient(circle_at_top_right,rgba(126,226,255,0.16),transparent_22%),#05070c] text-white select-none"
+        className="grid h-full min-h-0 w-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,153,196,0.18),transparent_24%),radial-gradient(circle_at_top_right,rgba(126,226,255,0.18),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(205,255,150,0.12),transparent_22%),linear-gradient(180deg,#040811_0%,#05070c_100%)] text-white select-none"
       >
         <section className="relative min-h-0 overflow-hidden">
           <Canvas
@@ -709,7 +712,7 @@ export function GameShell({
           />
         </section>
 
-        <section className="relative z-20 border-t border-white/12 bg-[linear-gradient(180deg,rgba(7,10,19,0.96)_0%,rgba(16,15,34,0.94)_52%,rgba(11,30,42,0.92)_100%)] px-4 py-4 sm:px-6 sm:py-5">
+        <section className="relative z-20 border-t border-white/14 bg-[linear-gradient(180deg,rgba(10,15,27,0.96)_0%,rgba(35,18,48,0.94)_52%,rgba(13,42,55,0.92)_100%)] px-4 py-4 sm:px-6 sm:py-5">
           <div
             ref={setTranscriptMount}
             className="mx-auto w-full max-w-6xl"

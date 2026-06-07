@@ -7,29 +7,37 @@ export type NeighborDoorId =
   | "2C"
   | "2D";
 
-const corridorCenterX = 4.05;
-const corridorCenterZ = -6.25;
-const corridorWidth = 24.6;
-const corridorDepth = 4.8;
+const corridorLeftWallX = -8.85;
+const corridorRightWallX = 19.45;
+const corridorSouthWallZ = -3.85;
+const corridorDepth = 5.6;
+const corridorWidth = corridorRightWallX - corridorLeftWallX;
 const corridorHalfDepth = corridorDepth / 2;
-const corridorLeftWallX = corridorCenterX - corridorWidth / 2;
-const corridorSouthWallZ = corridorCenterZ + corridorHalfDepth;
-const corridorNorthWallZ = corridorCenterZ - corridorHalfDepth;
-const southDoorStartX = 5.15;
-const southDoorSpacing = 3.05;
-const northDoorStartX = 4.5;
-const northDoorSpacing = 2.9;
-const neighborDoorApproachOffset = 0.46;
+const corridorCenterX = corridorLeftWallX + corridorWidth / 2;
+const corridorCenterZ = corridorSouthWallZ - corridorHalfDepth;
+const corridorNorthWallZ = corridorSouthWallZ - corridorDepth;
+const apartmentModuleStartX = 5.4;
+const apartmentModuleWidth = 3.45;
+const apartmentModuleCount = 4;
+const southDoorStartX = apartmentModuleStartX + apartmentModuleWidth / 2;
+const southDoorSpacing = apartmentModuleWidth;
+const northDoorStartX = southDoorStartX;
+const northDoorSpacing = apartmentModuleWidth;
+const neighborDoorApproachOffset = 0.54;
+const corridorModuleBoundaries = Array.from(
+  { length: apartmentModuleCount + 1 },
+  (_, index) => apartmentModuleStartX + index * apartmentModuleWidth,
+);
 
 const southSideResidents = [
   { id: "1B" as NeighborDoorId, residentName: "Beta" },
-  { id: "1C" as NeighborDoorId, residentName: "Gama" },
+  { id: "1C" as NeighborDoorId, residentName: "Gamma" },
   { id: "1D" as NeighborDoorId, residentName: "Delta" },
 ];
 
 const northSideResidents = [
   { id: "2A" as NeighborDoorId, residentName: "Epsilon" },
-  { id: "2B" as NeighborDoorId, residentName: "Teta" },
+  { id: "2B" as NeighborDoorId, residentName: "Theta" },
   { id: "2C" as NeighborDoorId, residentName: "Eta" },
   { id: "2D" as NeighborDoorId, residentName: "Iota" },
 ];
@@ -67,13 +75,15 @@ export const sceneLayout = {
   corridor: {
     center: [corridorCenterX, 0, corridorCenterZ] as const,
     size: [corridorWidth, 0.04, corridorDepth] as const,
+    moduleBoundaries: corridorModuleBoundaries,
+    moduleWidth: apartmentModuleWidth,
   },
   buildingExitDoor: {
-    hinge: [corridorLeftWallX, 0, corridorCenterZ - 0.61] as const,
-    width: 1.22,
+    hinge: [corridorLeftWallX, 0, corridorCenterZ - 0.68] as const,
+    width: 1.36,
     height: 2.18,
     thickness: 0.08,
-    interactionPosition: [corridorLeftWallX + 0.72, 1.04, corridorCenterZ] as const,
+    interactionPosition: [corridorLeftWallX + 0.98, 1.04, corridorCenterZ] as const,
   },
   outside: {
     center: [-15.3, 0, -5.92] as const,
@@ -82,10 +92,10 @@ export const sceneLayout = {
   package: {
     position: [1.42, 0.03, -4.64] as const,
     size: [0.46, 0.26, 0.34] as const,
-    recipientName: "Teta",
+    recipientName: "Theta",
     recipientDoorId: "2B" as NeighborDoorId,
     labelLine1: "KALP ILACI",
-    labelLine2: "Teta / 2B",
+    labelLine2: "Theta / 2B",
   },
   nearSideNeighborDoors: southSideResidents.map((door, index) => ({
     ...door,

@@ -38,6 +38,60 @@ type ChildBranchWindow = {
 
 type BranchBootState = "booting" | "missing" | "ready";
 
+function getBranchWindowFeatures() {
+  const width = Math.round(Math.min(Math.max(window.outerWidth * 0.74, 920), 1240));
+  const height = Math.round(
+    Math.min(Math.max(window.outerHeight * 0.78, 660), 860),
+  );
+  const left = Math.max(
+    24,
+    Math.round(window.screenX + (window.outerWidth - width) / 2 + 28),
+  );
+  const top = Math.max(
+    24,
+    Math.round(window.screenY + (window.outerHeight - height) / 2 + 24),
+  );
+
+  return [
+    "popup=yes",
+    "toolbar=no",
+    "menubar=no",
+    "location=yes",
+    "status=no",
+    "scrollbars=yes",
+    "resizable=yes",
+    `width=${width}`,
+    `height=${height}`,
+    `left=${left}`,
+    `top=${top}`,
+  ].join(",");
+}
+
+function paintBranchLoadingState(popup: Window) {
+  try {
+    popup.document.title = "Choices | Paralel Pencere";
+    popup.document.body.innerHTML = `
+      <main style="margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:
+        radial-gradient(circle at top left, rgba(255,163,198,.28), transparent 24%),
+        radial-gradient(circle at top right, rgba(126,226,255,.24), transparent 22%),
+        radial-gradient(circle at bottom, rgba(198,255,148,.18), transparent 20%),
+        #07101a;color:#f8fbff;font-family:Geist,system-ui,sans-serif;">
+        <section style="max-width:480px;border:1px solid rgba(255,255,255,.2);border-radius:28px;padding:28px 30px;
+          background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.06));
+          box-shadow:0 28px 100px rgba(4,12,22,.36);backdrop-filter:blur(18px);">
+          <p style="margin:0 0 12px;font-size:11px;letter-spacing:.34em;text-transform:uppercase;opacity:.74;">Parallel Window</p>
+          <h1 style="margin:0 0 14px;font-size:28px;line-height:1.1;">Yeni pencere hazirlaniyor</h1>
+          <p style="margin:0;font-size:15px;line-height:1.75;opacity:.84;">
+            Buyuk karar kendi evrenine ayriliyor. Yukleme tamamlaninca oyun bu yeni pencerede devam edecek.
+          </p>
+        </section>
+      </main>
+    `;
+  } catch {
+    // Some browsers restrict painting a just-opened window for a brief moment.
+  }
+}
+
 export function ParallelUniverseDesktop({
   initialBranchId,
 }: ParallelUniverseDesktopProps) {
@@ -228,7 +282,7 @@ export function ParallelUniverseDesktop({
       }
 
       setPopupError(
-        "Yeni dal sekmesi beklenenden uzun suruyor. Acik sekmeyi kontrol et veya ayni dali yeniden ac.",
+        "Yeni dal penceresi beklenenden uzun suruyor. Acik pencereyi kontrol et veya ayni dali yeniden ac.",
       );
     }, 9000);
 
@@ -241,35 +295,80 @@ export function ParallelUniverseDesktop({
     captureRef.current = capture;
   }, []);
 
-  const openBranchInNewTab = useCallback((branchUrl: string) => {
+  const prepareBranchWindow = useCallback(() => {
     try {
-      const link = document.createElement("a");
-      link.href = branchUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch {
-      setPopupError(
-        "Yeni sekme acilamadi. Tarayici ayarlarini kontrol edip tekrar dene.",
+      const popup = window.open(
+        "",
+        `choices-parallel-${Date.now()}`,
+        getBranchWindowFeatures(),
       );
-    }
+      if (!popup) {
+        return null;
+      }
 
-    return null;
+      paintBranchLoadingState(popup);
+      return popup;
+    } catch {
+      return null;
+    }
   }, []);
+
+  const openBranchInWindow = useCallback(
+    (branchUrl: string, existingPopup?: Window | null) => {
+      const popup = existingPopup ?? prepareBranchWindow();
+      if (!popup) {
+        setPopupError(
+          "Yeni pencere acilamadi. Tarayici popup iznini kontrol edip tekrar dene.",
+        );
+        return null;
+      }
+
+      try {
+        popup.location.replace(branchUrl);
+        popup.focus();
+        return popup;
+      } catch {
+        try {
+          popup.close();
+        } catch {
+          // Ignore close failures and retry with a direct open.
+        }
+
+        try {
+          return window.open(
+            branchUrl,
+            `choices-parallel-${Date.now()}`,
+            getBranchWindowFeatures(),
+          );
+        } catch {
+          setPopupError(
+            "Yeni pencere acilamadi. Tarayici popup iznini kontrol edip tekrar dene.",
+          );
+          return null;
+        }
+      }
+    },
+    [prepareBranchWindow],
+  );
 
   const handleOpenParallelBranch = useCallback(
     (request: ParallelBranchRequest) => {
       if (childBranchRef.current) {
         setPopupError(
-          "Bu evrende zaten hazirlanan bir dal var. Once o sekmeyi ac ya da kapat.",
+          "Bu evrende zaten hazirlanan bir dal penceresi var. Once onu ac ya da kapat.",
         );
         return;
       }
 
       setPopupError(null);
+      const popup = prepareBranchWindow();
+
+      if (!popup) {
+        setPopupError(
+          "Yeni pencere acilamadi. Tarayici popup iznini kontrol edip tekrar dene.",
+        );
+        return;
+      }
 
       try {
         const currentSnapshot = useGameStore.getState().getSnapshot();
@@ -282,23 +381,28 @@ export function ParallelUniverseDesktop({
             currentTitle: activeUniverse.title,
           },
         );
-        const popup = openBranchInNewTab(branchUrl);
+        const branchPopup = openBranchInWindow(branchUrl, popup);
 
         setChildBranch({
           id: storedBranch.id,
-          popup,
+          popup: branchPopup,
           preview,
           status: "pending",
           title: storedBranch.title,
           url: branchUrl,
         });
       } catch {
+        try {
+          popup.close();
+        } catch {
+          // Ignore close failures.
+        }
         setPopupError(
-          "Paralel sekme hazirlanirken bir sorun olustu. Sayfayi yenileyip tekrar dene.",
+          "Paralel pencere hazirlanirken bir sorun olustu. Sayfayi yenileyip tekrar dene.",
         );
       }
     },
-    [activeUniverse.title, initialBranchId, openBranchInNewTab],
+    [activeUniverse.title, initialBranchId, openBranchInWindow, prepareBranchWindow],
   );
 
   useEffect(() => {
@@ -375,8 +479,8 @@ export function ParallelUniverseDesktop({
       }
     }
 
-    openBranchInNewTab(childBranch.url);
-  }, [childBranch, openBranchInNewTab]);
+    openBranchInWindow(childBranch.url);
+  }, [childBranch, openBranchInWindow]);
 
   const handleDismissPendingBranch = useCallback(() => {
     const pendingBranch = childBranchRef.current;
@@ -391,7 +495,9 @@ export function ParallelUniverseDesktop({
 
   const childBadgeText = useMemo(() => {
     if (childBranch) {
-      return childBranch.status === "open" ? "Dal Acik" : "Dal Aciliyor";
+      return childBranch.status === "open"
+        ? "Pencere Acik"
+        : "Pencere Hazirlaniyor";
     }
 
     return isBranchWindow ? "Canli Dal" : "Ana Akis";
@@ -457,26 +563,36 @@ export function ParallelUniverseDesktop({
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,4,7,0.12)_0%,rgba(2,4,7,0.78)_100%)]" />
 
       <div
-        className="absolute z-20 flex min-h-0 flex-col overflow-hidden rounded-[2.2rem] border border-white/18 bg-[linear-gradient(180deg,rgba(7,10,21,0.74)_0%,rgba(12,16,31,0.62)_100%)] shadow-[0_30px_120px_rgba(15,23,42,0.4)] backdrop-blur-sm"
+        className="absolute z-20 flex min-h-0 flex-col overflow-hidden rounded-[2.3rem] border border-white/20 bg-[linear-gradient(180deg,rgba(8,12,24,0.76)_0%,rgba(13,18,33,0.68)_100%)] shadow-[0_34px_130px_rgba(4,12,22,0.42)] backdrop-blur-sm"
         style={{ inset: "0.75rem" }}
       >
-        <div className="flex items-center justify-between border-b border-white/12 bg-[linear-gradient(90deg,rgba(13,18,37,0.92),rgba(26,20,47,0.9),rgba(17,49,70,0.88))] px-5 py-3">
-          <div>
-            <p className="font-hud-sans text-[11px] uppercase tracking-[0.34em] text-pink-100/66">
-              {isBranchWindow ? "Paralel Evren" : "Kok Evren"}
-            </p>
-            <h1 className="font-hud-display mt-1 text-base font-semibold text-white sm:text-lg">
-              {activeUniverse.title}
-            </h1>
+        <div className="flex items-center justify-between border-b border-white/12 bg-[linear-gradient(90deg,rgba(15,21,42,0.94),rgba(32,22,51,0.92),rgba(20,60,76,0.88))] px-5 py-3">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full bg-[#ff8cab] shadow-[0_0_12px_rgba(255,140,171,0.46)]" />
+              <span className="h-3 w-3 rounded-full bg-[#ffd98a] shadow-[0_0_12px_rgba(255,217,138,0.42)]" />
+              <span className="h-3 w-3 rounded-full bg-[#98f0a8] shadow-[0_0_12px_rgba(152,240,168,0.4)]" />
+            </div>
+            <div>
+              <p className="font-hud-sans text-[11px] uppercase tracking-[0.34em] text-pink-100/66">
+                {isBranchWindow ? "Paralel Evren" : "Kok Evren"}
+              </p>
+              <h1 className="font-hud-display mt-1 text-base font-semibold text-white sm:text-lg">
+                {activeUniverse.title}
+              </h1>
+            </div>
           </div>
           <div className="flex items-center gap-2">
+            <p className="font-hud-sans text-[11px] uppercase tracking-[0.34em] text-pink-100/66">
+              Ayrilabilir Pencere
+            </p>
             {childBranch ? (
               <button
                 type="button"
                 className="hidden font-hud-sans rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white transition hover:-translate-y-0.5 hover:bg-white/16 sm:inline-flex"
                 onClick={handleFocusChildWindow}
               >
-                Dali yeniden ac
+                Pencereyi odaga al
               </button>
             ) : null}
             <span className="font-hud-sans rounded-full border border-pink-100/24 bg-[linear-gradient(135deg,rgba(255,166,194,0.22),rgba(126,226,255,0.18))] px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-pink-50">
@@ -512,13 +628,15 @@ export function ParallelUniverseDesktop({
             )}
             <div className="border-t border-white/8 p-4">
               <p className="font-hud-sans text-[10px] uppercase tracking-[0.28em] text-pink-100/64">
-                {childBranch.status === "open" ? "Acik Paralel Dal" : "Dal Hazirlaniyor"}
+                {childBranch.status === "open"
+                  ? "Acik Paralel Pencere"
+                  : "Paralel Pencere Hazirlaniyor"}
               </p>
               <p className="font-hud-display mt-2 text-base text-white">{childBranch.title}</p>
               <p className="font-hud-sans mt-2 text-sm leading-6 text-slate-200/78">
                 {childBranch.status === "open"
                   ? "Bu pencere askida. Dal penceresi kapaninca oyun burada kaldigi yerden devam edecek."
-                  : "Yeni sekme yukleniyor. Dal acilir acilmaz akisi oradan surdureceksin; bu pencere ancak o anda askiya alinacak."}
+                  : "Yeni pencere yukleniyor. Dal acilir acilmaz akisi oradan surdureceksin; bu pencere ancak o anda askiya alinacak."}
               </p>
             </div>
           </div>
@@ -528,7 +646,7 @@ export function ParallelUniverseDesktop({
       {popupError ? (
         <div className="hud-panel absolute bottom-5 left-1/2 z-40 w-[min(92vw,560px)] -translate-x-1/2 rounded-[1.7rem] border border-white/26 bg-[linear-gradient(145deg,rgba(255,249,239,0.9),rgba(232,246,255,0.78)_48%,rgba(247,230,255,0.74)_100%)] px-5 py-4 text-sm text-slate-950 shadow-[0_18px_60px_rgba(15,23,42,0.24)] backdrop-blur-xl">
           <p className="font-hud-sans text-[10px] uppercase tracking-[0.28em] text-fuchsia-950/56">
-            Dal Sekmesi Bekliyor
+            Dal Penceresi Bekliyor
           </p>
           <p className="font-hud-sans mt-2 leading-6 text-slate-800/84">{popupError}</p>
           {childBranch ? (
@@ -538,7 +656,7 @@ export function ParallelUniverseDesktop({
                 className="font-hud-sans rounded-full border border-rose-200/45 bg-[linear-gradient(135deg,rgba(255,153,196,0.9),rgba(255,215,126,0.92))] px-4 py-2 text-xs uppercase tracking-[0.22em] text-slate-950 transition hover:-translate-y-0.5"
                 onClick={handleFocusChildWindow}
               >
-                Dali yeniden ac
+                Pencereyi yeniden ac
               </button>
               <button
                 type="button"
