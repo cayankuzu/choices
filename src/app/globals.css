@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+}
+
+:root {
+  color-scheme: dark;
+  --background: #05070c;
+  --foreground: #edf2ff;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 157, 192, 0.2), transparent 24%),
+    radial-gradient(circle at 84% 12%, rgba(116, 216, 255, 0.18), transparent 26%),
+    radial-gradient(circle at 76% 82%, rgba(188, 255, 149, 0.14), transparent 24%),
+    radial-gradient(circle at 24% 88%, rgba(255, 215, 123, 0.12), transparent 22%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.28);
+  color: #f8fbff;
+}
+
+.font-hud-sans {
+  font-family:
+    var(--font-hud-sans),
+    var(--font-geist-sans),
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+
+.font-hud-display {
+  font-family:
+    var(--font-hud-display),
+    "Iowan Old Style",
+    "Palatino Linotype",
+    serif;
+  font-variation-settings: "SOFT" 60, "WONK" 0;
+}
+
+@keyframes hud-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(0, -12px, 0) scale(1.04);
+  }
+}
+
+@keyframes hud-shimmer {
+  0% {
+    transform: translate3d(-18%, -4%, 0) rotate(18deg);
+  }
+
+  100% {
+    transform: translate3d(110%, 8%, 0) rotate(18deg);
+  }
+}
+
+@keyframes hud-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes hud-bob {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, 6px, 0);
+  }
+}
+
+.hud-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.hud-panel::before {
+  content: "";
+  position: absolute;
+  inset: -25% auto auto -20%;
+  width: 46%;
+  height: 180%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.28),
+    rgba(255, 255, 255, 0.04),
+    transparent 74%
+  );
+  opacity: 0.58;
+  pointer-events: none;
+  z-index: -1;
+  animation: hud-shimmer 15s linear infinite;
+}
+
+.hud-panel::after {
+  content: "";
+  position: absolute;
+  right: -14%;
+  bottom: -32%;
+  width: 16rem;
+  height: 16rem;
+  background: radial-gradient(
+    circle,
+    rgba(255, 175, 203, 0.22) 0%,
+    rgba(108, 224, 255, 0.16) 32%,
+    transparent 70%
+  );
+  filter: blur(22px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.hud-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
