@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
-import {
-  Fraunces,
-  Geist,
-  Geist_Mono,
-  Space_Grotesk,
-} from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,34 +13,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin", "latin-ext"],
 });
 
-const hudSans = Space_Grotesk({
-  variable: "--font-hud-sans",
-  subsets: ["latin"],
-});
-
-const hudDisplay = Fraunces({
-  variable: "--font-hud-display",
-  subsets: ["latin"],
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin", "latin-ext"],
 });
 
 export const metadata: Metadata = {
-  title: "Choices: Oda",
-  description: "WASD, Shift, Ctrl ve Space ile gezilebilen boş 3D oda prototipi.",
+  title: "İntihab",
+  description:
+    "Bir gün, iki seçenek ve sayısız paralel evren üzerine üç boyutlu bir seçim oyunu.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="tr"
-      className={`${geistSans.variable} ${geistMono.variable} ${hudSans.variable} ${hudDisplay.variable} h-full antialiased`}
-    >
-      <body className="min-h-full overflow-hidden bg-background text-foreground">
-        {children}
-      </body>
+    <html lang="tr" className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }

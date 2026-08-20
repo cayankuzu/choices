@@ -1,724 +1,688 @@
 "use client";
 
-import { KeyboardControls, PerspectiveCamera } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Physics } from "@react-three/rapier";
-import {
-  type MutableRefObject,
-  type MouseEvent as ReactMouseEvent,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import type {
-  Group as ThreeGroup,
-  PerspectiveCamera as ThreePerspectiveCamera,
-  PointLight as ThreePointLight,
-  SpotLight as ThreeSpotLight,
-} from "three";
-import * as THREE from "three";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { createBranch, loadBranch, saveBranch } from "@/components/game/branch-storage";
+import { playGameSound } from "@/components/game/game-audio";
 import {
-  collapseSequenceDurations,
-  controlMap,
-} from "@/components/game/game-config";
-import { GameOverlay } from "@/components/game/game-overlay";
-import { InteractionTracker } from "@/components/game/interaction-tracker";
-import { IntroDirector } from "@/components/game/intro-director";
-import { shouldExposeLocalDebug } from "@/components/game/local-debug";
-import { type ParallelBranchRequest } from "@/components/game/parallel-branching";
-import { sceneLayout } from "@/components/game/scene-layout";
+  ChoicePanel,
+  DeathScreen,
+  DialogueFeed,
+  FrozenScreen,
+  FullMap,
+  GameHud,
+  MainMenu,
+  WakeOverlay,
+  type ChoiceOption,
+  type DialogueLine,
+  type GameSettings,
+} from "@/components/game/game-ui";
 import {
+  initialPlayerPose,
+  initialSnapshot,
+  type BulletImpact,
   type GameSnapshot,
-  useGameStore,
-} from "@/components/game/game-store";
-import { Player, type PlayerHandle } from "@/components/game/player";
-import { Room } from "@/components/game/room";
+  type InteractionId,
+  type MajorChoice,
+  type PlayerPose,
+  type PlayerTelemetry,
+  type StoryStage,
+  type WeaponSlot,
+} from "@/components/game/game-types";
 
-type LookState = {
-  pitch: number;
-  yaw: number;
+const GameWorld = dynamic(
+  () => import("@/components/game/game-world").then((module) => module.GameWorld),
+  {
+    loading: () => <div className="game-loading"><span /><p>Dünya kuruluyor…</p></div>,
+    ssr: false,
+  },
+);
+
+type BranchAction =
+  | "coffee-drink"
+  | "coffee-reject"
+  | "door-cancel"
+  | "door-give"
+  | "gun-carry"
+  | "gun-self"
+  | "package-leave"
+  | "package-take";
+
+const defaultSettings: GameSettings = {
+  filmGrain: true,
+  sensitivity: 1,
+  volume: 0.45,
 };
 
-const lookClamp = {
-  minPitch: -Math.PI / 2 + 0.08,
-  maxPitch: Math.PI / 2 - 0.08,
-} as const;
+const initialTelemetry: PlayerTelemetry = {
+  ...initialPlayerPose,
+  area: "Bizim ev · Stüdyo daire",
+};
 
-function clamp01(value: number) {
-  return THREE.MathUtils.clamp(value, 0, 1);
-}
+const interactionLabels: Record<Exclude<InteractionId, null>, string> = {
+  bed: "Yatağı incele",
+  car: "Arabaya bin",
+  "car-exit": "Arabadan in",
+  "garage-door": "Garaj kapısını aç",
+  gun: "Tabancayı incele",
+  honey: "Bal ye",
+  jam: "Reçel ye",
+  "neighbor-door": "Kapıyı çal",
+  package: "Paketi incele",
+};
 
-function easeOutCubic(value: number) {
-  return 1 - Math.pow(1 - value, 3);
-}
+const actionChoice: Record<BranchAction, Exclude<MajorChoice, null>> = {
+  "coffee-drink": "coffee",
+  "coffee-reject": "coffee",
+  "door-cancel": "door",
+  "door-give": "door",
+  "gun-carry": "gun",
+  "gun-self": "gun",
+  "package-leave": "package",
+  "package-take": "package",
+};
 
-function easeInOutCubic(value: number) {
-  return value < 0.5
-    ? 4 * value * value * value
-    : 1 - Math.pow(-2 * value + 2, 3) / 2;
-}
+const branchTitles: Record<BranchAction, string> = {
+  "coffee-drink": "Kahveyi kabul ettin",
+  "coffee-reject": "Kahveyi reddettin",
+  "door-cancel": "Kapıdan vazgeçtin",
+  "door-give": "Paketi teslim ettin",
+  "gun-carry": "Silahı yanına aldın",
+  "gun-self": "Silahı kendine çevirdin",
+  "package-leave": "Paketi bıraktın",
+  "package-take": "Paketi yanına aldın",
+};
 
-function getLookStateFromForward(
-  snapshot: Pick<GameSnapshot, "introPhase" | "playerForward">,
-): LookState {
-  if (snapshot.introPhase !== "playing") {
-    return {
-      pitch: sceneLayout.intro.endPitch,
-      yaw: sceneLayout.intro.endYaw,
-    };
-  }
+const randomActions: Record<Exclude<MajorChoice, null>, [BranchAction, BranchAction]> = {
+  coffee: ["coffee-drink", "coffee-reject"],
+  door: ["door-give", "door-cancel"],
+  gun: ["gun-self", "gun-carry"],
+  package: ["package-take", "package-leave"],
+};
 
-  const [forwardX, forwardY, forwardZ] = snapshot.playerForward;
-  const forwardLength = Math.hypot(forwardX, forwardY, forwardZ);
+const choiceTitles: Record<Exclude<MajorChoice, null>, string> = {
+  coffee: "Bir kahve içer misin?",
+  door: "Kapının arkasında bir hayat var.",
+  gun: "Silah masada.",
+  package: "Paket kapının önünde.",
+};
 
-  if (forwardLength < 0.0001) {
-    return {
-      pitch: sceneLayout.intro.endPitch,
-      yaw: sceneLayout.intro.endYaw,
-    };
-  }
+const choiceOptions: Record<Exclude<MajorChoice, null>, Array<ChoiceOption<BranchAction>>> = {
+  coffee: [
+    { action: "coffee-drink", detail: "Ayakta bir fincan paylaş.", label: "Kahve iç" },
+    { action: "coffee-reject", detail: "Teşekkür et ve yoluna devam et.", label: "Reddet" },
+  ],
+  door: [
+    { action: "door-give", detail: "Kutuyu Nihat Bey'e teslim et.", label: "Kutuyu ver" },
+    { action: "door-cancel", detail: "Paket sende kalsın.", label: "Vazgeç" },
+  ],
+  gun: [
+    { action: "gun-self", detail: "Bu evren burada sona erer.", label: "Kafana sık", tone: "danger" },
+    { action: "gun-carry", detail: "Silah envantere eklenir.", label: "Yanına al" },
+  ],
+  package: [
+    { action: "package-take", detail: "Kutu envanterine eklenir.", label: "Yanına al" },
+    { action: "package-leave", detail: "Kutuyu olduğu yerde bırak.", label: "Bırak" },
+  ],
+};
 
+function poseFromTelemetry(telemetry: PlayerTelemetry): PlayerPose {
   return {
-    pitch: Math.asin(THREE.MathUtils.clamp(forwardY / forwardLength, -1, 1)),
-    yaw: Math.atan2(-forwardX, -forwardZ),
+    heading: telemetry.heading,
+    pitch: telemetry.pitch,
+    x: telemetry.x,
+    y: telemetry.y,
+    z: telemetry.z,
   };
 }
 
-function SceneLights() {
-  const ambientLight = useGameStore((state) => state.settings.ambientLight);
-  const directionalLight = useGameStore(
-    (state) => state.settings.directionalLight,
-  );
-  const ceilingLightRef = useRef<ThreeSpotLight | null>(null);
-  const accentLightRef = useRef<ThreePointLight | null>(null);
-
-  useFrame((state) => {
-    const elapsed = state.clock.getElapsedTime();
-    const flicker =
-      1 +
-      Math.sin(elapsed * 2.7) * 0.08 +
-      Math.sin(elapsed * 8.6 + 0.6) * 0.05;
-
-    if (ceilingLightRef.current) {
-      ceilingLightRef.current.intensity = 1.15 * flicker;
-    }
-
-    if (accentLightRef.current) {
-      accentLightRef.current.intensity =
-        0.56 + Math.sin(elapsed * 1.4 + 1.1) * 0.08;
-    }
-  });
-
-  return (
-    <>
-      <color attach="background" args={["#020408"]} />
-      <fog attach="fog" args={["#020408", 5.6, 13.8]} />
-      <ambientLight intensity={ambientLight * 0.74} color="#c3cdc7" />
-      <hemisphereLight
-        intensity={0.42}
-        color="#b0c0b8"
-        groundColor="#060a10"
-      />
-      <directionalLight
-        position={[2.4, 4.8, 2.6]}
-        intensity={directionalLight * 0.76}
-        color="#d6dfd4"
-      />
-      <spotLight
-        ref={ceilingLightRef}
-        position={[0, 3.02, 0.15]}
-        angle={0.72}
-        penumbra={1}
-        intensity={1.56}
-        distance={12.4}
-        color="#b8d2b1"
-        castShadow={false}
-      />
-      <pointLight
-        ref={accentLightRef}
-        position={[2.85, 1.28, 1.85]}
-        intensity={0.82}
-        distance={5.8}
-        decay={2}
-        color="#7d565a"
-      />
-    </>
-  );
-}
-
-function ViewmodelGunMesh() {
-  return (
-    <group>
-      <mesh position={[0.028, 0.012, 0]}>
-        <boxGeometry args={[0.35, 0.06, 0.07]} />
-        <meshStandardMaterial
-          color="#6b7683"
-          roughness={0.18}
-          metalness={0.82}
-          emissive="#0a0f15"
-          emissiveIntensity={0.28}
-        />
-      </mesh>
-      <mesh position={[0.106, 0.048, 0]}>
-        <boxGeometry args={[0.16, 0.018, 0.052]} />
-        <meshStandardMaterial
-          color="#919aa4"
-          roughness={0.14}
-          metalness={0.88}
-        />
-      </mesh>
-      <mesh position={[-0.098, -0.086, 0.032]} rotation={[0, 0, 0.56]}>
-        <boxGeometry args={[0.11, 0.198, 0.056]} />
-        <meshStandardMaterial
-          color="#2e333a"
-          roughness={0.58}
-          metalness={0.16}
-        />
-      </mesh>
-      <mesh position={[-0.028, -0.048, 0]}>
-        <boxGeometry args={[0.126, 0.034, 0.046]} />
-        <meshStandardMaterial
-          color="#1c232a"
-          roughness={0.48}
-          metalness={0.18}
-        />
-      </mesh>
-      <mesh position={[-0.008, -0.02, 0.001]}>
-        <torusGeometry args={[0.026, 0.0055, 10, 18, Math.PI]} />
-        <meshStandardMaterial
-          color="#22272d"
-          roughness={0.42}
-          metalness={0.24}
-        />
-      </mesh>
-      <mesh position={[0.24, 0.008, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.014, 0.014, 0.116, 20]} />
-        <meshStandardMaterial
-          color="#9aa2ab"
-          roughness={0.16}
-          metalness={0.88}
-        />
-      </mesh>
-      <mesh position={[-0.126, -0.03, -0.034]} rotation={[0, 0, 0.2]}>
-        <boxGeometry args={[0.074, 0.04, 0.042]} />
-        <meshStandardMaterial
-          color="#24292f"
-          roughness={0.62}
-          metalness={0.14}
-        />
-      </mesh>
-    </group>
-  );
-}
-
-function GunViewmodel({
-  cameraRef,
-}: {
-  cameraRef: RefObject<ThreePerspectiveCamera | null>;
-}) {
-  const groupRef = useRef<ThreeGroup | null>(null);
-  const collapsePhase = useGameStore((state) => state.collapsePhase);
-  const equippedItem = useGameStore((state) => state.equippedItem);
-  const gunHeld = useGameStore((state) => state.gunHeld);
-  const introPhase = useGameStore((state) => state.introPhase);
-  const swayVector = useRef(new THREE.Vector3());
-  const localOffset = useRef(new THREE.Vector3());
-  const baseOffset = useRef(new THREE.Vector3());
-  const phaseStartedAt = useRef<number | null>(null);
-
-  useEffect(() => {
-    phaseStartedAt.current = null;
-  }, [collapsePhase]);
-
-  useFrame((state) => {
-    const camera = cameraRef.current;
-    const group = groupRef.current;
-    if (!camera || !group) {
-      return;
-    }
-
-    const visible =
-      introPhase === "playing" &&
-      gunHeld &&
-      equippedItem === "gun" &&
-      collapsePhase !== "blackout";
-
-    group.visible = visible;
-    if (!visible) {
-      return;
-    }
-
-    const elapsed = state.clock.getElapsedTime();
-    if (collapsePhase !== "idle" && phaseStartedAt.current === null) {
-      phaseStartedAt.current = elapsed;
-    }
-
-    const phaseElapsed =
-      phaseStartedAt.current === null
-        ? 0
-        : elapsed - phaseStartedAt.current;
-
-    let offsetX = 0.2;
-    let offsetY = -0.13;
-    let offsetZ = -0.32;
-    let pitch = 0.06;
-    let yaw = -0.08;
-    let roll = -0.04;
-
-    const idleSwayX = Math.sin(elapsed * 1.9) * 0.008;
-    const idleSwayY = Math.sin(elapsed * 3.4) * 0.006;
-
-    if (collapsePhase === "priming") {
-      const progress = clamp01(
-        phaseElapsed / collapseSequenceDurations.priming,
-      );
-      const raiseProgress =
-        progress < 0.72 ? easeInOutCubic(progress / 0.72) : 1;
-      offsetX = THREE.MathUtils.lerp(0.22, 0.64, raiseProgress);
-      offsetY = THREE.MathUtils.lerp(-0.13, -0.012, raiseProgress);
-      offsetZ = THREE.MathUtils.lerp(-0.32, -0.12, easeOutCubic(raiseProgress));
-      pitch = THREE.MathUtils.lerp(0.06, -0.14, raiseProgress);
-      yaw = THREE.MathUtils.lerp(-0.08, -1.06, raiseProgress);
-      roll =
-        THREE.MathUtils.lerp(-0.04, -0.54, raiseProgress) +
-        Math.sin(phaseElapsed * 9.2) * 0.012;
-    } else if (collapsePhase === "surging") {
-      const progress = clamp01(
-        phaseElapsed / collapseSequenceDurations.surging,
-      );
-      offsetX = THREE.MathUtils.lerp(0.64, 0.72, easeInOutCubic(progress));
-      offsetY = THREE.MathUtils.lerp(-0.012, 0.018, progress);
-      offsetZ = THREE.MathUtils.lerp(-0.12, -0.08, progress);
-      pitch =
-        THREE.MathUtils.lerp(-0.14, -0.04, progress) +
-        Math.sin(phaseElapsed * 7.4) * 0.014;
-      yaw = THREE.MathUtils.lerp(-1.06, -1.24, easeInOutCubic(progress));
-      roll =
-        THREE.MathUtils.lerp(-0.54, -0.66, progress) +
-        Math.sin(phaseElapsed * 11.5) * 0.018;
-    } else if (collapsePhase === "falling") {
-      const progress = clamp01(
-        phaseElapsed / collapseSequenceDurations.falling,
-      );
-      offsetX = THREE.MathUtils.lerp(0.72, 0.26, easeInOutCubic(progress));
-      offsetY = THREE.MathUtils.lerp(0.018, -0.19, progress);
-      offsetZ = THREE.MathUtils.lerp(-0.08, -0.03, progress);
-      pitch =
-        THREE.MathUtils.lerp(-0.02, 0.88, progress) +
-        Math.sin(progress * Math.PI) * 0.06;
-      yaw = THREE.MathUtils.lerp(-1.18, 0.18, progress);
-      roll = THREE.MathUtils.lerp(-0.66, 0.42, progress);
-    } else if (collapsePhase === "closing") {
-      offsetX = 0.04;
-      offsetY = 0.14;
-      offsetZ = -0.12;
-      pitch = 0.74;
-      yaw = 0.18;
-      roll = 0.42;
-    }
-
-    baseOffset.current.set(offsetX, offsetY, offsetZ);
-    swayVector.current.set(idleSwayX, idleSwayY, 0);
-    localOffset.current.copy(baseOffset.current).add(swayVector.current);
-    localOffset.current.applyQuaternion(camera.quaternion);
-
-    group.position.copy(camera.position).add(localOffset.current);
-    group.quaternion.copy(camera.quaternion);
-    group.rotateX(pitch);
-    group.rotateY(yaw);
-    group.rotateZ(roll);
-  });
-
-  return (
-    <group ref={groupRef} visible={false}>
-      <group position={[-0.16, -0.09, 0.08]} rotation={[0.22, -0.2, -0.32]}>
-        <mesh position={[0, -0.1, 0]}>
-          <boxGeometry args={[0.12, 0.22, 0.13]} />
-          <meshStandardMaterial color="#2b3239" roughness={0.82} metalness={0.08} />
-        </mesh>
-        <mesh position={[0.02, 0.035, 0.03]}>
-          <boxGeometry args={[0.11, 0.12, 0.12]} />
-          <meshStandardMaterial color="#b98974" roughness={0.9} metalness={0.02} />
-        </mesh>
-      </group>
-      <group position={[0.08, -0.1, 0.16]} rotation={[0.12, 0.28, 0.18]}>
-        <mesh position={[0, -0.12, 0]}>
-          <boxGeometry args={[0.12, 0.24, 0.13]} />
-          <meshStandardMaterial color="#2b3239" roughness={0.82} metalness={0.08} />
-        </mesh>
-        <mesh position={[-0.01, 0.032, -0.02]}>
-          <boxGeometry args={[0.11, 0.12, 0.12]} />
-          <meshStandardMaterial color="#b78773" roughness={0.9} metalness={0.02} />
-        </mesh>
-      </group>
-      <group position={[0.02, 0.014, 0.02]} rotation={[0.02, -0.08, 0.04]}>
-        <ViewmodelGunMesh />
-      </group>
-    </group>
-  );
-}
-
-function CameraController({
-  cameraRef,
-  lookRef,
-}: {
-  cameraRef: RefObject<ThreePerspectiveCamera | null>;
-  lookRef: MutableRefObject<LookState>;
-}) {
-  const fov = useGameStore((state) => state.settings.fov);
-  const collapsePhase = useGameStore((state) => state.collapsePhase);
-  const collapseStartedAt = useRef<number | null>(null);
-
-  useEffect(() => {
-    const camera = cameraRef.current;
-    if (!camera) {
-      return;
-    }
-
-    camera.fov = fov;
-    camera.updateProjectionMatrix();
-  }, [cameraRef, fov]);
-
-  useEffect(() => {
-    collapseStartedAt.current = null;
-  }, [collapsePhase]);
-
-  useFrame((state) => {
-    const camera = cameraRef.current;
-    if (!camera) {
-      return;
-    }
-
-    if (collapsePhase !== "idle" && collapseStartedAt.current === null) {
-      collapseStartedAt.current = state.clock.getElapsedTime();
-    }
-
-    const collapseElapsed =
-      collapseStartedAt.current === null
-        ? 0
-        : state.clock.getElapsedTime() - collapseStartedAt.current;
-
-    let extraPitch = 0;
-    let extraYaw = 0;
-    let roll = 0;
-
-    if (collapsePhase === "priming") {
-      const progress = clamp01(
-        collapseElapsed / collapseSequenceDurations.priming,
-      );
-      const glanceProgress =
-        progress < 0.7 ? easeInOutCubic(progress / 0.7) : 1;
-      extraYaw = THREE.MathUtils.lerp(0, 0.62, glanceProgress);
-      extraPitch = 0.018 + Math.sin(collapseElapsed * 9.6) * 0.012;
-      roll =
-        THREE.MathUtils.lerp(0, -0.12, glanceProgress) +
-        Math.sin(collapseElapsed * 8.5) * 0.012;
-    } else if (collapsePhase === "surging") {
-      const progress = clamp01(
-        collapseElapsed / collapseSequenceDurations.surging,
-      );
-      if (progress < 0.76) {
-        extraYaw = THREE.MathUtils.lerp(
-          0.62,
-          0.02,
-          easeInOutCubic(progress / 0.76),
-        );
-      } else {
-        extraYaw = THREE.MathUtils.lerp(
-          0.02,
-          0.04,
-          easeInOutCubic((progress - 0.76) / 0.24),
-        );
-      }
-
-      extraPitch =
-        THREE.MathUtils.lerp(0.042, 0.09, progress) +
-        Math.sin(collapseElapsed * 12.4) * 0.022;
-      roll =
-        THREE.MathUtils.lerp(-0.12, -0.18, progress) +
-        Math.sin(collapseElapsed * 10.6) * 0.026;
-    } else if (collapsePhase === "falling") {
-      const progress = Math.min(
-        collapseElapsed / collapseSequenceDurations.falling,
-        1,
-      );
-      extraYaw = THREE.MathUtils.lerp(0.04, -0.12, progress);
-      extraPitch = THREE.MathUtils.lerp(0.1, 0.82, progress);
-      roll = THREE.MathUtils.lerp(-0.18, -0.94, progress) +
-        Math.sin(collapseElapsed * 9.2) * 0.038;
-    } else if (collapsePhase === "closing") {
-      extraYaw = -0.12;
-      extraPitch = 0.84;
-      roll = -0.98;
-    } else if (collapsePhase === "blackout") {
-      extraYaw = -0.12;
-      extraPitch = 0.86;
-      roll = -1.02;
-    }
-
-    camera.rotation.order = "YXZ";
-    camera.rotation.x = lookRef.current.pitch + extraPitch;
-    camera.rotation.y = lookRef.current.yaw + extraYaw;
-    camera.rotation.z = roll;
-  });
-
-  return null;
-}
-
-function MouseSurface({
-  lookRef,
-  blocked = false,
-}: {
-  lookRef: MutableRefObject<LookState>;
-  blocked?: boolean;
-}) {
-  const lookEnabled = useGameStore((state) => state.lookEnabled);
-  const introPhase = useGameStore((state) => state.introPhase);
-  const paused = useGameStore((state) => state.paused);
-  const interactionMenuOpen = useGameStore(
-    (state) => state.interactionMenuOpen,
-  );
-  const openNoteId = useGameStore((state) => state.openNoteId);
-  const textPanelExpanded = useGameStore(
-    (state) => state.textPanelExpanded,
-  );
-  const collapsePhase = useGameStore((state) => state.collapsePhase);
-  const deliverySequencePhase = useGameStore(
-    (state) => state.deliverySequencePhase,
-  );
-  const setLookEnabled = useGameStore((state) => state.setLookEnabled);
-  const mouseSensitivity = useGameStore(
-    (state) => state.settings.mouseSensitivity,
-  );
-  const canLook =
-    lookEnabled &&
-    introPhase === "playing" &&
-    !blocked &&
-    !paused &&
-    !interactionMenuOpen &&
-    openNoteId === null &&
-    !textPanelExpanded &&
-    collapsePhase === "idle" &&
-    deliverySequencePhase === "idle";
-
-  const updateLook = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!canLook) {
-      return;
-    }
-
-    const movementScale = mouseSensitivity * 0.0024;
-    lookRef.current.yaw -= event.movementX * movementScale;
-    lookRef.current.pitch -= event.movementY * movementScale;
-    lookRef.current.pitch = Math.min(
-      lookClamp.maxPitch,
-      Math.max(lookClamp.minPitch, lookRef.current.pitch),
-    );
+function snapshotForAction(
+  action: BranchAction,
+  current: GameSnapshot,
+  player: PlayerPose,
+): GameSnapshot {
+  const continued: GameSnapshot = {
+    ...current,
+    carPose: current.inCar ? player : current.carPose,
+    player,
   };
 
-  return (
-    <div
-      className={[
-        "pointer-events-auto absolute inset-0 z-10",
-        canLook ? "cursor-none" : "cursor-default",
-      ].join(" ")}
-      onClick={() => {
-        if (
-          introPhase === "playing" &&
-          !blocked &&
-          !paused &&
-          !interactionMenuOpen &&
-          openNoteId === null &&
-          !textPanelExpanded &&
-          collapsePhase === "idle" &&
-          deliverySequencePhase === "idle"
-        ) {
-          setLookEnabled(true);
-        }
-      }}
-      onContextMenu={(event) => event.preventDefault()}
-      onMouseMove={updateLook}
-    >
-      {canLook ? (
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2">
-          <span className="absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/28 bg-white/5 shadow-[0_0_22px_rgba(126,226,255,0.18)]" />
-          <span className="absolute left-1/2 top-[12%] h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[linear-gradient(180deg,#ffb5d6,#ffe48f)] shadow-[0_0_14px_rgba(255,181,214,0.45)]" />
-          <span className="absolute left-[12%] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[linear-gradient(180deg,#8ce7ff,#b3ffbf)] shadow-[0_0_14px_rgba(140,231,255,0.4)]" />
-          <span className="absolute bottom-[12%] left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[linear-gradient(180deg,#ffd88f,#ffb6d7)] shadow-[0_0_14px_rgba(255,216,143,0.36)]" />
-          <span className="absolute right-[12%] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[linear-gradient(180deg,#96e5ff,#ffe1a8)] shadow-[0_0_14px_rgba(150,229,255,0.4)]" />
-          <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#fff4b0] shadow-[0_0_18px_rgba(255,244,176,0.58)]" />
-        </div>
-      ) : null}
-    </div>
-  );
+  switch (action) {
+    case "gun-carry":
+      return { ...continued, bullets: 6, gunState: "carried", magazines: 6, playerDead: false, selectedSlot: 2 };
+    case "gun-self":
+      return { ...continued, gunState: "used", playerDead: true, selectedSlot: 1 };
+    case "package-take":
+      return { ...continued, packageDeadlineAt: Date.now() + 180_000, packageState: "carried" };
+    case "package-leave":
+      return { ...continued, packageDeadlineAt: null, packageState: "left" };
+    case "door-give":
+      return {
+        ...continued,
+        neighborDoorOpen: true,
+        packageDeadlineAt: null,
+        packageState: "delivered",
+        storyStage: "delivery",
+      };
+    case "door-cancel":
+      return { ...continued, storyStage: "free" };
+    case "coffee-drink":
+      return { ...continued, coffeeAccepted: true, storyStage: "coffee-drink" };
+    case "coffee-reject":
+      return { ...continued, coffeeAccepted: false, storyStage: "coffee-reject" };
+  }
 }
 
-type GameShellProps = {
-  canCloseParallel?: boolean;
-  externallyFrozen?: boolean;
-  freezeLabel?: string | null;
-  onCloseParallel?: () => void;
-  onOpenParallelBranch?: (request: ParallelBranchRequest) => void;
-  onRegisterCapture?: (capture: () => string | null) => void;
-};
+export function GameShell({ initialBranchId }: { initialBranchId: string | null }) {
+  const [branchReady, setBranchReady] = useState(!initialBranchId);
+  const [branchTitle, setBranchTitle] = useState<string | null>(null);
+  const [choice, setChoice] = useState<MajorChoice>(null);
+  const [choiceSeconds, setChoiceSeconds] = useState(13);
+  const [cinematicActive, setCinematicActive] = useState(false);
+  const [cinematicProgress, setCinematicProgress] = useState(0);
+  const [dialogueLines, setDialogueLines] = useState<DialogueLine[]>([]);
+  const [frozen, setFrozen] = useState(false);
+  const [interaction, setInteraction] = useState<InteractionId>(null);
+  const [locked, setLocked] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [menuPanel, setMenuPanel] = useState<"controls" | "settings" | null>(null);
+  const [pendingBranchUrl, setPendingBranchUrl] = useState<string | null>(null);
+  const [settings, setSettings] = useState<GameSettings>(defaultSettings);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [shotTick, setShotTick] = useState(0);
+  const [snapshot, setSnapshot] = useState<GameSnapshot>(initialSnapshot);
+  const [started, setStarted] = useState(Boolean(initialBranchId));
+  const [telemetry, setTelemetry] = useState(initialTelemetry);
+  const [toast, setToast] = useState<string | null>(null);
+  const [wakeStartedAt, setWakeStartedAt] = useState<number | null>(null);
 
-export function GameShell({
-  canCloseParallel = false,
-  externallyFrozen = false,
-  freezeLabel = null,
-  onCloseParallel,
-  onOpenParallelBranch,
-  onRegisterCapture,
-}: GameShellProps) {
-  const [initialSnapshot] = useState(() => useGameStore.getState().getSnapshot());
-  const cameraRef = useRef<ThreePerspectiveCamera | null>(null);
-  const playerRef = useRef<PlayerHandle | null>(null);
-  const lookRef = useRef<LookState>(getLookStateFromForward(initialSnapshot));
-  const shellRef = useRef<HTMLElement | null>(null);
-  const [transcriptMount, setTranscriptMount] =
-    useState<HTMLDivElement | null>(null);
-  const showPhysicsDebug = useGameStore(
-    (state) => state.settings.showPhysicsDebug,
-  );
+  const childWatchRef = useRef<number | null>(null);
+  const choiceDeadlineRef = useRef(0);
+  const cinematicRunRef = useRef<StoryStage | null>(null);
+  const dialogueIdRef = useRef(0);
+  const freezeStartedAtRef = useRef(0);
+  const frozenChoiceRef = useRef<Exclude<MajorChoice, null> | null>(null);
+  const interactionHandlerRef = useRef<(target: Exclude<InteractionId, null>) => void>(() => undefined);
+  const reservedTabRef = useRef<Window | null>(null);
+  const settingsRef = useRef(settings);
+  const snapshotRef = useRef(snapshot);
+  const telemetryRef = useRef(telemetry);
+  const toastTimerRef = useRef<number | null>(null);
+  const wakeTimerRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!onRegisterCapture) {
-      return;
-    }
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { snapshotRef.current = snapshot; }, [snapshot]);
 
-    onRegisterCapture(() => {
-      const canvas = shellRef.current?.querySelector("canvas");
-      if (!(canvas instanceof HTMLCanvasElement)) {
-        return null;
-      }
-
-      try {
-        return canvas.toDataURL("image/png");
-      } catch {
-        return null;
-      }
-    });
-  }, [onRegisterCapture]);
-
-  useEffect(() => {
-    if (!shouldExposeLocalDebug()) {
-      return;
-    }
-
-    (
-      window as typeof window & {
-        __choicesDebug?: {
-          setLook: (pitch: number, yaw: number) => void;
-          teleport: (
-            position: readonly [number, number, number],
-            forward?: readonly [number, number, number],
-          ) => void;
-        };
-        __choicesStore?: typeof useGameStore;
-      }
-    ).__choicesStore = useGameStore;
-    (
-      window as typeof window & {
-        __choicesDebug?: {
-          setLook: (pitch: number, yaw: number) => void;
-          teleport: (
-            position: readonly [number, number, number],
-            forward?: readonly [number, number, number],
-          ) => void;
-        };
-      }
-    ).__choicesDebug = {
-      setLook: (pitch, yaw) => {
-        lookRef.current = {
-          pitch: THREE.MathUtils.clamp(
-            pitch,
-            lookClamp.minPitch,
-            lookClamp.maxPitch,
-          ),
-          yaw,
-        };
-      },
-      teleport: (position, forward = [0, 0, -1]) => {
-        playerRef.current?.teleport(position, forward);
-        lookRef.current = getLookStateFromForward({
-          introPhase: "playing",
-          playerForward: forward,
-        });
-      },
-    };
+  const showToast = useCallback((message: string) => {
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    setToast(message);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 3_500);
   }, []);
 
+  const addDialogue = useCallback((speaker: DialogueLine["speaker"], text: string) => {
+    dialogueIdRef.current += 1;
+    const line: DialogueLine = { id: dialogueIdRef.current, speaker, text };
+    setDialogueLines((current) => [...current.slice(-3), line]);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const stored = localStorage.getItem("intihab-settings:v1");
+        if (stored) setSettings({ ...defaultSettings, ...JSON.parse(stored) });
+      } catch {
+        // Varsayılan ayarlar kullanılmaya devam eder.
+      }
+      setSettingsReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!settingsReady) return;
+    localStorage.setItem("intihab-settings:v1", JSON.stringify(settings));
+  }, [settings, settingsReady]);
+
+  useEffect(() => {
+    if (!initialBranchId) return;
+    const timer = window.setTimeout(() => {
+      const branch = loadBranch(initialBranchId);
+      if (branch) {
+        setSnapshot(branch.snapshot);
+        setTelemetry({ ...branch.snapshot.player, area: "Kapının önü" });
+        telemetryRef.current = { ...branch.snapshot.player, area: "Kapının önü" };
+        setBranchTitle(branch.title);
+      } else {
+        setStarted(false);
+        showToast("Bu evren bulunamadı. Ana dünyaya dönüldü.");
+      }
+      setBranchReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [initialBranchId, showToast]);
+
+  useEffect(() => {
+    if (!initialBranchId || !branchReady) return;
+    const timer = window.setTimeout(() => saveBranch(initialBranchId, snapshot), 0);
+    return () => window.clearTimeout(timer);
+  }, [branchReady, initialBranchId, snapshot]);
+
+  const reserveChoiceTab = useCallback(() => {
+    if (reservedTabRef.current && !reservedTabRef.current.closed) return;
+    const tab = window.open("about:blank", "_blank");
+    if (!tab) return;
+    tab.document.title = "İntihab · Seçim bekleniyor";
+    tab.document.body.style.cssText =
+      "margin:0;display:grid;place-items:center;min-height:100vh;background:#0d1211;color:#d7c49a;font:600 12px Arial;letter-spacing:.14em;text-transform:uppercase";
+    tab.document.body.textContent = "Kararın bekleniyor…";
+    reservedTabRef.current = tab;
+    tab.blur();
+    window.focus();
+  }, []);
+
+  const openChoice = useCallback((nextChoice: Exclude<MajorChoice, null>) => {
+    document.exitPointerLock?.();
+    choiceDeadlineRef.current = Date.now() + 13_000;
+    setChoiceSeconds(13);
+    setChoice(nextChoice);
+    setMapOpen(false);
+    playGameSound("choice", settingsRef.current.volume);
+  }, []);
+
+  const restoreParentChoice = useCallback((originChoice: Exclude<MajorChoice, null>) => {
+    const frozenFor = Date.now() - freezeStartedAtRef.current;
+    setSnapshot((current) => ({
+      ...current,
+      packageDeadlineAt: current.packageDeadlineAt ? current.packageDeadlineAt + frozenFor : null,
+    }));
+    setFrozen(false);
+    setPendingBranchUrl(null);
+    openChoice(originChoice);
+  }, [openChoice]);
+
+  const commitMajorChoice = useCallback((action: BranchAction, useCurrentTabFallback = false) => {
+    const originChoice = actionChoice[action];
+    const nextSnapshot = snapshotForAction(action, snapshotRef.current, poseFromTelemetry(telemetryRef.current));
+    const branch = createBranch(nextSnapshot, branchTitles[action], initialBranchId, originChoice);
+    const branchUrl = new URL(window.location.href);
+    branchUrl.searchParams.set("branch", branch.id);
+
+    let child: Window | null = null;
+    if (reservedTabRef.current && !reservedTabRef.current.closed) {
+      child = reservedTabRef.current;
+      child.location.replace(branchUrl.toString());
+      reservedTabRef.current = null;
+    } else {
+      child = window.open(branchUrl.toString(), "_blank");
+    }
+
+    if (!child) {
+      if (useCurrentTabFallback) {
+        window.location.assign(branchUrl.toString());
+        return;
+      }
+      setPendingBranchUrl(branchUrl.toString());
+      showToast("Yeni sekme engellendi. Seçeneğe yeniden tıkla.");
+      return;
+    }
+
+    document.exitPointerLock?.();
+    frozenChoiceRef.current = originChoice;
+    freezeStartedAtRef.current = Date.now();
+    setChoice(null);
+    setFrozen(true);
+    playGameSound("choice", settingsRef.current.volume);
+    child.focus();
+
+    if (childWatchRef.current) window.clearInterval(childWatchRef.current);
+    childWatchRef.current = window.setInterval(() => {
+      if (!child.closed) return;
+      if (childWatchRef.current) window.clearInterval(childWatchRef.current);
+      childWatchRef.current = null;
+      const previousChoice = frozenChoiceRef.current;
+      frozenChoiceRef.current = null;
+      if (previousChoice) restoreParentChoice(previousChoice);
+    }, 400);
+  }, [initialBranchId, restoreParentChoice, showToast]);
+
+  useEffect(() => {
+    if (!choice) return;
+    const timer = window.setInterval(() => {
+      const seconds = Math.max(0, Math.ceil((choiceDeadlineRef.current - Date.now()) / 1_000));
+      setChoiceSeconds(seconds);
+      if (Date.now() < choiceDeadlineRef.current) return;
+      window.clearInterval(timer);
+      const actions = randomActions[choice];
+      commitMajorChoice(actions[Math.random() < 0.5 ? 0 : 1], true);
+    }, 160);
+    return () => window.clearInterval(timer);
+  }, [choice, commitMajorChoice]);
+
+  useEffect(() => {
+    if (frozen || snapshot.packageState !== "carried" || !snapshot.packageDeadlineAt) return;
+    const timer = window.setTimeout(() => {
+      setSnapshot((current) => {
+        if (!current.packageDeadlineAt || current.packageState !== "carried" || Date.now() < current.packageDeadlineAt) return current;
+        return { ...current, elderAlive: false, neighborDoorOpen: false, packageDeadlineAt: null };
+      });
+    }, Math.max(0, snapshot.packageDeadlineAt - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [frozen, snapshot.packageDeadlineAt, snapshot.packageState]);
+
+  useEffect(() => {
+    if (!branchReady || !started) return;
+    const stage = snapshot.storyStage;
+    if (stage === "coffee-offer") {
+      const timer = window.setTimeout(() => {
+        if (!choice && !frozen) openChoice("coffee");
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+    if (stage !== "delivery" && stage !== "coffee-drink" && stage !== "coffee-reject") return;
+    if (cinematicRunRef.current === stage) return;
+    cinematicRunRef.current = stage;
+    if (stage === "coffee-drink") playGameSound("coffee", settingsRef.current.volume);
+    setCinematicActive(true);
+    setCinematicProgress(0);
+    setDialogueLines([]);
+    document.exitPointerLock?.();
+
+    const sequences: Record<Exclude<StoryStage, "free" | "coffee-offer" | "complete">, {
+      duration: number;
+      lines: Array<[number, DialogueLine["speaker"], string]>;
+    }> = {
+      delivery: {
+        duration: 11_800,
+        lines: [
+          [500, "Nihat Bey", "Teşekkür ederim, ben de ilaçlarım ne zaman gelecek diye düşünüyordum."],
+          [2_400, "Sen", "Rica ederim, ne demek."],
+          [3_800, "Nihat Bey", "Ne yapacaksın bugün?"],
+          [5_600, "Sen", "Öyle dolaşmaya çıktım. Belki yemek yerim."],
+          [7_500, "Nihat Bey", "Şu yeni açılan Son Akşam Yemeği'nde yeme de! Hahaha."],
+          [9_600, "Sen", "Aslında güzel fikir... Hahaha."],
+          [10_900, "Nihat Bey", "Bir kahve içer misin?"],
+        ],
+      },
+      "coffee-drink": {
+        duration: 8_600,
+        lines: [
+          [400, "Sen", "Olur, bir kahve içerim."],
+          [1_900, "Nihat Bey", "Ayakta içelim; dizlerim oturunca daha çok ağrıyor."],
+          [4_000, "Nihat Bey", "Bazen bir fincan, bütün günün yönünü değiştirir."],
+          [6_400, "Sen", "Bugün yön değiştirmeye alışıyorum."],
+        ],
+      },
+      "coffee-reject": {
+        duration: 4_200,
+        lines: [
+          [400, "Sen", "Teşekkür ederim, bugün almayayım."],
+          [2_100, "Nihat Bey", "Canın sağ olsun. Yolun açık olsun."],
+        ],
+      },
+    };
+
+    const sequence = sequences[stage];
+    const startedAt = Date.now();
+    const timers = sequence.lines.map(([delay, speaker, text]) => window.setTimeout(() => addDialogue(speaker, text), delay));
+    const progressTimer = window.setInterval(() => {
+      setCinematicProgress(Math.min(1, (Date.now() - startedAt) / sequence.duration));
+    }, 80);
+    const finishTimer = window.setTimeout(() => {
+      window.clearInterval(progressTimer);
+      setCinematicProgress(1);
+      setCinematicActive(false);
+      if (stage === "delivery") {
+        setSnapshot((current) => ({ ...current, storyStage: "coffee-offer" }));
+      } else {
+        setSnapshot((current) => ({ ...current, storyStage: "complete" }));
+        window.setTimeout(() => setDialogueLines([]), 2_400);
+      }
+    }, sequence.duration);
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.clearInterval(progressTimer);
+      window.clearTimeout(finishTimer);
+    };
+  }, [addDialogue, branchReady, choice, frozen, openChoice, snapshot.storyStage, started]);
+
+  const handleStart = useCallback(() => {
+    setMenuPanel(null);
+    setStarted(true);
+    const startedAt = Date.now();
+    setWakeStartedAt(startedAt);
+    document.querySelector<HTMLCanvasElement>(".game-world canvas")?.requestPointerLock();
+    if (wakeTimerRef.current) window.clearTimeout(wakeTimerRef.current);
+    wakeTimerRef.current = window.setTimeout(() => setWakeStartedAt(null), 3_650);
+  }, []);
+
+  const handlePlayerUpdate = useCallback((nextTelemetry: PlayerTelemetry) => {
+    telemetryRef.current = nextTelemetry;
+    setTelemetry(nextTelemetry);
+  }, []);
+
+  const handleInteract = useCallback((target: Exclude<InteractionId, null>) => {
+    const current = snapshotRef.current;
+
+    if (target === "gun") {
+      openChoice("gun");
+      return;
+    }
+    if (target === "package") {
+      openChoice("package");
+      return;
+    }
+    if (target === "honey" || target === "jam") {
+      const key = target === "honey" ? "honeyServings" : "jamServings";
+      if (current[key] <= 0) {
+        showToast("Kavanoz boş.");
+        return;
+      }
+      setSnapshot({ ...current, [key]: current[key] - 1 });
+      showToast(`${target === "honey" ? "Bal" : "Reçel"} yedin. Kavanozda ${current[key] - 1} porsiyon kaldı.`);
+      playGameSound("eat", settingsRef.current.volume);
+      return;
+    }
+    if (target === "bed") {
+      showToast("Yatak dağınık; sabah burada başladı.");
+      return;
+    }
+    if (target === "garage-door") {
+      setSnapshot({ ...current, garageOpen: true });
+      showToast("Garaj kapısı yukarı doğru açıldı.");
+      playGameSound("engine", settingsRef.current.volume);
+      return;
+    }
+    if (target === "car") {
+      setSnapshot({ ...current, inCar: true, player: poseFromTelemetry(telemetryRef.current), selectedSlot: 1 });
+      showToast("Kontak çevrildi. E ile araçtan inebilirsin.");
+      playGameSound("engine", settingsRef.current.volume);
+      return;
+    }
+    if (target === "car-exit") {
+      const pose = poseFromTelemetry(telemetryRef.current);
+      setSnapshot({ ...current, carPose: pose, inCar: false, player: pose });
+      showToast("Arabadan indin.");
+      return;
+    }
+
+    const expired = current.packageState === "carried" && current.packageDeadlineAt !== null && Date.now() >= current.packageDeadlineAt;
+    playGameSound("door", settingsRef.current.volume);
+    if (!current.elderAlive || expired) {
+      setSnapshot({ ...current, elderAlive: false, neighborDoorOpen: false, packageDeadlineAt: null });
+      showToast("Kapıyı çaldın. İçeriden ses gelmiyor.");
+      return;
+    }
+    if (current.packageState === "carried") {
+      openChoice("door");
+      return;
+    }
+    if (current.packageState === "delivered") {
+      showToast("Kapı açık. Nihat Bey içeride.");
+      return;
+    }
+    showToast("Kapıyı çaldın. Bir süre bekledin; açan olmadı.");
+  }, [openChoice, showToast]);
+
+  useEffect(() => { interactionHandlerRef.current = handleInteract; }, [handleInteract]);
+
+  const handleFire = useCallback((impact: Omit<BulletImpact, "id"> | null) => {
+    const current = snapshotRef.current;
+    if (current.gunState !== "carried" || current.selectedSlot !== 2 || current.inCar || current.playerDead) return;
+    if (current.bullets <= 0) {
+      showToast("Şarjör boş. R ile değiştir.");
+      return;
+    }
+
+    const bulletImpact: BulletImpact | null = impact ? { ...impact, id: crypto.randomUUID() } : null;
+    const nextDamage = bulletImpact?.targetId
+      ? { ...current.worldDamage, [bulletImpact.targetId]: (current.worldDamage[bulletImpact.targetId] ?? 0) + 1 }
+      : current.worldDamage;
+    setSnapshot({
+      ...current,
+      bulletImpacts: bulletImpact ? [...current.bulletImpacts.slice(-39), bulletImpact] : current.bulletImpacts,
+      bullets: current.bullets - 1,
+      worldDamage: nextDamage,
+    });
+    setShotTick((tick) => tick + 1);
+    playGameSound("gun", settingsRef.current.volume);
+  }, [showToast]);
+
+  useEffect(() => {
+    const handleKeyboard = (event: KeyboardEvent) => {
+      if (!started || frozen || snapshotRef.current.playerDead) return;
+
+      if (event.code === "KeyM" && !event.repeat && !choice && !cinematicActive && wakeStartedAt === null) {
+        document.exitPointerLock?.();
+        setMapOpen((open) => !open);
+        return;
+      }
+      if (event.code === "Escape" && mapOpen) {
+        setMapOpen(false);
+        return;
+      }
+      if (choice || cinematicActive || mapOpen || wakeStartedAt !== null) return;
+
+      if (event.code === "KeyE" && !event.repeat && interaction) {
+        const current = snapshotRef.current;
+        const major = interaction === "gun" || interaction === "package" || (
+          interaction === "neighbor-door" && current.elderAlive && current.packageState === "carried"
+        );
+        if (major) reserveChoiceTab();
+        interactionHandlerRef.current(interaction);
+        return;
+      }
+      if (event.code === "Digit1") setSnapshot((current) => ({ ...current, selectedSlot: 1 }));
+      if (event.code === "Digit2" && snapshotRef.current.gunState === "carried" && !snapshotRef.current.inCar) {
+        setSnapshot((current) => ({ ...current, selectedSlot: 2 }));
+      }
+      if (event.code === "KeyR") {
+        const current = snapshotRef.current;
+        if (current.gunState === "carried" && current.selectedSlot === 2 && current.bullets < 6 && current.magazines > 0) {
+          setSnapshot({ ...current, bullets: 6, magazines: current.magazines - 1 });
+          playGameSound("reload", settingsRef.current.volume);
+        }
+      }
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      const current = snapshotRef.current;
+      if (!started || frozen || choice || cinematicActive || mapOpen || current.playerDead || current.inCar || current.gunState !== "carried") return;
+      event.preventDefault();
+      const slot: WeaponSlot = current.selectedSlot === 1 ? 2 : 1;
+      setSnapshot({ ...current, selectedSlot: slot });
+    };
+
+    window.addEventListener("keydown", handleKeyboard);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyboard);
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, [choice, cinematicActive, frozen, interaction, mapOpen, reserveChoiceTab, started, wakeStartedAt]);
+
+  useEffect(() => () => {
+    if (childWatchRef.current) window.clearInterval(childWatchRef.current);
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    if (wakeTimerRef.current) window.clearTimeout(wakeTimerRef.current);
+    if (reservedTabRef.current && !reservedTabRef.current.closed) reservedTabRef.current.close();
+  }, []);
+
+  const active =
+    started &&
+    branchReady &&
+    !choice &&
+    !cinematicActive &&
+    !frozen &&
+    !mapOpen &&
+    !snapshot.playerDead &&
+    wakeStartedAt === null;
+
   return (
-    <KeyboardControls map={controlMap}>
-      <main
-        ref={shellRef}
-        className="grid h-full min-h-0 w-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,153,196,0.18),transparent_24%),radial-gradient(circle_at_top_right,rgba(126,226,255,0.18),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(205,255,150,0.12),transparent_22%),linear-gradient(180deg,#040811_0%,#05070c_100%)] text-white select-none"
-      >
-        <section className="relative min-h-0 overflow-hidden">
-          <Canvas
-            className="absolute inset-0 touch-none"
-            dpr={[1, 1.8]}
-            gl={{
-              antialias: true,
-              powerPreference: "high-performance",
-              preserveDrawingBuffer: true,
-            }}
-          >
-            <PerspectiveCamera
-              ref={cameraRef}
-              makeDefault
-              position={[0, 1.65, 3.5]}
-              fov={74}
-              near={0.05}
-              far={40}
-            />
-            <SceneLights />
-            <CameraController cameraRef={cameraRef} lookRef={lookRef} />
-            <IntroDirector
-              cameraRef={cameraRef}
-              lookRef={lookRef}
-              externallyFrozen={externallyFrozen}
-            />
-            <InteractionTracker
-              cameraRef={cameraRef}
-              interactionBlocked={externallyFrozen}
-            />
-            <GunViewmodel cameraRef={cameraRef} />
-            <Physics
-              gravity={[0, -9.81, 0]}
-              updateLoop="follow"
-              debug={showPhysicsDebug}
-            >
-              <Room />
-              <Player
-                ref={playerRef}
-                spawn={initialSnapshot.playerPosition}
-                initialForward={initialSnapshot.playerForward}
-                cameraRef={cameraRef}
-                movementBlocked={externallyFrozen}
-              />
-            </Physics>
-          </Canvas>
-
-          <MouseSurface lookRef={lookRef} blocked={externallyFrozen} />
-          <GameOverlay
-            canCloseParallel={canCloseParallel}
-            externallyFrozen={externallyFrozen}
-            freezeLabel={freezeLabel}
-            onCloseParallel={onCloseParallel}
-            onOpenParallelBranch={onOpenParallelBranch}
-            transcriptMount={transcriptMount}
+    <main className="game-root">
+      {branchReady ? (
+        <section className="game-world" aria-label="İntihab birinci kişi oyun dünyası">
+          <GameWorld
+            active={active}
+            cinematicProgress={cinematicProgress}
+            lookSensitivity={settings.sensitivity}
+            onFire={handleFire}
+            onInteractionChange={setInteraction}
+            onLockChange={setLocked}
+            onPlayerUpdate={handlePlayerUpdate}
+            shotTick={shotTick}
+            snapshot={snapshot}
+            wakeStartedAt={wakeStartedAt}
           />
         </section>
+      ) : null}
 
-        <section className="relative z-20 border-t border-white/14 bg-[linear-gradient(180deg,rgba(10,15,27,0.96)_0%,rgba(35,18,48,0.94)_52%,rgba(13,42,55,0.92)_100%)] px-4 py-4 sm:px-6 sm:py-5">
-          <div
-            ref={setTranscriptMount}
-            className="mx-auto w-full max-w-6xl"
-          />
-        </section>
-      </main>
-    </KeyboardControls>
+      <div className="screen-grade" aria-hidden="true" />
+      {settings.filmGrain ? <div className="film-grain" aria-hidden="true" /> : null}
+
+      {!started ? (
+        <MainMenu
+          onClosePanel={() => setMenuPanel(null)}
+          onOpenPanel={setMenuPanel}
+          onSettingsChange={setSettings}
+          onStart={handleStart}
+          panel={menuPanel}
+          settings={settings}
+        />
+      ) : null}
+
+      {started && branchReady && !snapshot.playerDead && !frozen && !choice && !mapOpen ? (
+        <GameHud
+          interaction={cinematicActive || wakeStartedAt !== null ? null : interaction}
+          interactionLabel={interaction ? interactionLabels[interaction] : null}
+          locked={locked || cinematicActive || wakeStartedAt !== null}
+          onLock={() => document.querySelector<HTMLCanvasElement>(".game-world canvas")?.requestPointerLock()}
+          snapshot={snapshot}
+          telemetry={telemetry}
+          toast={toast}
+        />
+      ) : null}
+
+      {wakeStartedAt !== null ? <WakeOverlay /> : null}
+      {mapOpen ? <FullMap onClose={() => setMapOpen(false)} telemetry={telemetry} /> : null}
+      <DialogueFeed lines={dialogueLines} />
+
+      {choice ? (
+        <ChoicePanel
+          choice={choice}
+          onSelect={commitMajorChoice}
+          options={choiceOptions[choice]}
+          pendingBranch={Boolean(pendingBranchUrl)}
+          seconds={choiceSeconds}
+          title={choiceTitles[choice]}
+        />
+      ) : null}
+
+      {frozen ? <FrozenScreen /> : null}
+      {snapshot.playerDead && branchReady ? <DeathScreen title={branchTitle} /> : null}
+      {!branchReady ? <div className="branch-loading"><span /><p>Seçim anı yükleniyor…</p></div> : null}
+      {cinematicActive ? <div className="cinematic-vignette" aria-hidden="true" /> : null}
+    </main>
   );
 }
