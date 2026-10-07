@@ -2,6 +2,7 @@
 :root {
   color-scheme: dark;
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, Consolas, "SF Mono", Menlo, monospace;
 }
 
 html,
@@ -17,4 +18,60 @@ body {
 #app {
   position: fixed;
   inset: 0;
+}
+
+#view {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: crosshair;
+}
+
+/* qa/dev F3 readout */
+.overlay {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  margin: 0;
+  padding: 6px 8px;
+  font: 12px/1.45 var(--font-mono);
+  color: #dfe6f0;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  white-space: pre;
+  z-index: 20;
+}
+
+.hint {
+  position: fixed;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #cfd6e0;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.barrier {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1.5;
+  color: #e6e6e6;
+  background: #000;
+  z-index: 30;
+}
+
+.barrier p {
+  max-width: 36rem;
+  margin: 0;
 }

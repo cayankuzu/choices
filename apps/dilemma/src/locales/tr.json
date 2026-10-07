@@ -1,0 +1,7 @@
+{
+  "app.unsupported": "DİLEMMA için WebGL2 gerekir. Güncel bir masaüstü tarayıcı (Chrome, Edge, Firefox, Safari 17+) kullanın.",
+  "app.contextLost": "Görüntü bağlantısı koptu. Geri gelmezse sayfayı yenileyin.",
+  "app.clickToPlay": "Oynamak için tıkla",
+  "app.caveat": "Donanım hızlandırma kapalı: düşük kalite.",
+  "app.measuring": "Ölçülüyor…"
+}

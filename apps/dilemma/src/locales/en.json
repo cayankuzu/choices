@@ -1,0 +1,7 @@
+{
+  "app.unsupported": "DİLEMMA needs WebGL2. Use a current desktop browser (Chrome, Edge, Firefox, Safari 17+).",
+  "app.contextLost": "The graphics connection was lost. Reload the page if it does not come back.",
+  "app.clickToPlay": "Click to play",
+  "app.caveat": "Hardware acceleration is off: low quality.",
+  "app.measuring": "Measuring…"
+}

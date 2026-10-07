@@ -6,6 +6,5 @@ export default defineConfig({
     name: "dilemma",
     include: ["src/**/*.test.ts"],
     environment: "node",
-    passWithNoTests: true,
   },
 });
