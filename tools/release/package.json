@@ -1,0 +1,7 @@
+{
+  "name": "@dilemma/tools-release",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Release skeleton: zip.mjs (web + itch bundles, F15) and verify-headers.mjs (COOP / wasm MIME / cache)."
+}

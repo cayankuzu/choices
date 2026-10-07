@@ -1,0 +1,7 @@
+{
+  "name": "@dilemma/tools-assets",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Asset pipeline (F1: copy of sTressT scripts/assets with --app) and the sTressT SHA-256 baseline."
+}

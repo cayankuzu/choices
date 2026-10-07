@@ -1,0 +1,144 @@
+# DİLEMMA — kümülatif regresyon listesi (FAZLAR Faz 0 "Tam regresyon"; liste yalnız büyür).
+# Okuyan: tools/qa/regress.mjs (`npm run regress`).
+# Alanlar: id · title (FAZLAR'daki metin birebir) · since (ilk faz) · auto (null = el testi;
+#   T6'da {kind: vitest|playwright|script, ref: "..."} doldurulur) · manual_min (el testi dk) · module[].
+phase: F0
+items:
+  - id: R-00
+    title: "Ortam: Blender 4.2 LTS, `toktx`, fontTools, Node 22, Playwright tarayıcıları; sürümler raporda."
+    since: F0
+    auto: null
+    manual_min: 2
+    module: [repo, tools]
+  - id: R-01
+    title: "`npm run check` kökte yeşil; CI yeşil işaret."
+    since: F0
+    auto: null
+    manual_min: 1
+    module: [repo, ci]
+  - id: R-02
+    title: "qa/prod açılış: `console-allow.json` dışı 0 hata/uyarı; `document.title === \"DİLEMMA\"`; prod'da `__dilemma` yok."
+    since: F0
+    auto: null
+    manual_min: 2
+    module: [boot, dev]
+  - id: R-03
+    title: "Engel ekranları: WebGL2 yok/mobil/caveat."
+    since: F0
+    auto: null
+    manual_min: 3
+    module: [engine, ui]
+  - id: R-04
+    title: "Kalite: `?q=` zorlar; 5 s ölçüm `dilemma.quality.v1`; aynı GPU yeniden ölçmez; oyun içi yalnız düşüş."
+    since: F0
+    auto: null
+    manual_min: 3
+    module: [engine, quality]
+  - id: R-05
+    title: "Pointer lock: tıkla/Esc/yeniden; seçenek ekranında kilit yokken süre akar (K7)."
+    since: F0
+    auto: null
+    manual_min: 2
+    module: [core, input, choice]
+  - id: R-06
+    title: "Hareket: WASD/Shift/C/Space; duvar; 0,35 m basamak; 3 m kutuya tırmanılmaz."
+    since: F0
+    auto: null
+    manual_min: 3
+    module: [player, engine]
+  - id: R-07
+    title: "Sekme gizli 10 s→hiçbir sayaç ilerlemez; görünür→sürer."
+    since: F0
+    auto: null
+    manual_min: 1
+    module: [core, clock]
+  - id: R-08
+    title: "Seçim akışı: ara sahne (0,25×, lowpass)→2 seçenek→çubuk→tıkla/dolum→zar 2 s→Devam; T5 zar atmaz, pencere açmaz; Esc kararı uygulandı."
+    since: F0
+    auto: null
+    manual_min: 4
+    module: [choice, cutscene, audio]
+  - id: R-09
+    title: "Zar: aynı `?u=` üç yenilemede aynı."
+    since: F0
+    auto: null
+    manual_min: 2
+    module: [choice, rng]
+  - id: R-10
+    title: "Pencere: Devam→yeni sekme; çocukta \"Devam etmek için tıkla\"; READY sıcak≤1,5 s/soğuk≤4 s; ebeveyn `.frozen`; kapanınca≤2 s uyanış; `focus()` davranışı tarayıcı başına raporda."
+    since: F0
+    auto: null
+    manual_min: 5
+    module: [universe]
+  - id: R-11
+    title: "Kilit: çocukta ikinci büyük seçim→kapat→üstü çizili; çözmeden kapat→kilit yok."
+    since: F0
+    auto: null
+    manual_min: 3
+    module: [universe, choice]
+  - id: R-12
+    title: "Emülatör: `noOpen(true)`→`?u=` değişir→geri→uyanır; F5 aynı evren; iframe'de varsayılan emülatör."
+    since: F0
+    auto: null
+    manual_min: 3
+    module: [universe]
+  - id: R-13
+    title: "Derinlik 4; render eden bağlam daima 1 (donmuşta `render.calls === 0`); D1'de canlı bağlam 1; dondurulmuş sekme heap≤80 MB."
+    since: F0
+    auto: null
+    manual_min: 4
+    module: [universe, engine]
+  - id: R-14
+    title: "`?noidb=1`→bellek deposu uyarısı; oturum sürer; evrenler emülatörde."
+    since: F0
+    auto: null
+    manual_min: 2
+    module: [universe, save]
+  - id: R-15
+    title: "i18n: TR↔EN anında; `<html lang>`; `DİLEMMA` iki dilde; `İ` doğru."
+    since: F0
+    auto: null
+    manual_min: 2
+    module: [ui, i18n]
+  - id: R-16
+    title: "Ses: ilk jestte `running`; donmuşta `suspended`; görünürde `resume`."
+    since: F0
+    auto: null
+    manual_min: 2
+    module: [audio]
+  - id: R-17
+    title: "Donma: her kademede sahne/Rapier/doku dispose; D1 `forceContextLoss`; uyanış DOM; \"Bu evrene dön\"≤2 s; yetim kipi uyanır."
+    since: F0
+    auto: null
+    manual_min: 4
+    module: [universe, engine]
+  - id: R-18
+    title: "Bütçe: başlangıç JS≤230 KB gzip; `npm ls three` tek; sTressT 76 vaka+bench ayrı."
+    since: F0
+    auto: null
+    manual_min: 1
+    module: [repo, bench]
+  - id: R-19
+    title: "ErrorScreen: 5 tetikte≤1 s; üç düğme; Destek görünür."
+    since: F0
+    auto: null
+    manual_min: 3
+    module: [ui, error]
+  - id: R-20
+    title: "Handoff: çocuk snapshot'ı yoksa `NEED_SNAPSHOT`→≤ 1 s; `window-test.html` 9 madde kayıtlı."
+    since: F0
+    auto: null
+    manual_min: 5
+    module: [universe, release]
+  - id: R-21
+    title: "Pause menüsü 5 düğme; \"Sıkıştım\" spawn'a ışınlar."
+    since: F0
+    auto: null
+    manual_min: 1
+    module: [ui]
+  - id: R-22
+    title: "Snapshot deep-equal≤64 KB; çocuk state ebeveyn snapshot'ına eşit."
+    since: F0
+    auto: null
+    manual_min: 2
+    module: [universe, save]

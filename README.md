@@ -1,39 +1,23 @@
-# Choices · Dünya 001
+# DİLEMMA
 
-GTA ve Postal tarzı özgür dolaşım hedefleyen web oyununun ilk gezilebilir dünya prototipi.
+Birinci şahıs, hep gece, iki seçenek. Masaüstü web tarayıcısı için (klavye + fare). Tasarım ve teknik sözleşme
+`docs/` altındadır (`KANON.md` > `ICERIK.md` > `TEKNIK.md` > `FAZLAR.md`).
 
-Bu sürümde yalnızca:
+## Repo
+- `apps/dilemma` — oyun (Vite 8, TypeScript 7, three.js 0.186, Rapier 0.21)
+- `apps/stresst` — sTressT (git subtree, birebir; iframe ile gömülür — `plan/K1-KARAR.md`)
+- `tools/*` — bütçe, i18n taraması, regresyon, sürüm, asset baseline
+- `archive/next-prototype` — eski Next.js prototipi (yalnız referans; etiket `next-prototype-final`)
 
-- Oyuncunun stüdyo dairesi
-- Kapının önündeki ilaç paketi
-- Kaldırım ve kısa sokak
-- Yaşlı komşu Nihat Bey'in yan evi
-- Üçüncü şahıs hareket, kamera, koşma, zıplama ve etkileşim temeli
-
-bulunur. Silah, büyük seçimler, paralel sekmeler, geniş yollar ve sonraki hikâye bölümleri henüz uygulanmamıştır.
-
-## Yerelde çalıştırma
-
+## Komutlar (kökte, Node ≥ 22)
 ```bash
 npm install
-npm run dev
-```
-
-[http://localhost:3000](http://localhost:3000)
-
-## Kontroller
-
-- `WASD`: Hareket
-- `Fare`: Kamera
-- `Shift`: Koş
-- `Space`: Zıpla
-- `E`: Etkileşim
-- `Esc`: Fare imlecini bırak
-
-## Kontrol komutları
-
-```bash
-npm run lint
-npx tsc --noEmit
-npm run build
+npm run dev          # http://localhost:5181
+npm run preview:qa   # qa build + http://localhost:4181 (overlay, __dilemma)
+npm run preview      # prod build + http://localhost:4182
+npm run check        # tsc ×2 + oxlint + vitest + vite build qa/prod + bütçe + i18n taraması
+npm run e2e          # Playwright (chromium/firefox/webkit; qa build'i kendisi başlatır)
+npm run test:stresst # sTressT vitest takımı (bench: npm run bench:stresst)
+npm run stresst:verify
+npm run regress
 ```

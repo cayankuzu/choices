@@ -1,0 +1,7 @@
+{
+  "name": "@dilemma/tools-bench",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Build budgets (JS gzip ladder, first load, file count) for apps/dilemma/dist."
+}

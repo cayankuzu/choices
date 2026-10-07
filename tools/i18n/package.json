@@ -1,0 +1,7 @@
+{
+  "name": "@dilemma/tools-i18n",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Source scan: Turkish-character string literals in apps/dilemma/src are an error (UI text lives in locales/*.json)."
+}

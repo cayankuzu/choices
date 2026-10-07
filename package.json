@@ -1,31 +1,40 @@
 {
-  "name": "intihab",
-  "version": "0.1.0",
+  "name": "dilemma",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+  "version": "0.0.1",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
   },
-  "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
-    "@react-three/rapier": "^2.2.0",
-    "next": "16.2.7",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "three": "^0.184.0",
-    "zustand": "^5.0.14"
+  "workspaces": [
+    "apps/*",
+    "tools/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/dilemma",
+    "build": "npm run build -w apps/dilemma",
+    "build:qa": "npm run build:qa -w apps/dilemma",
+    "preview": "npm run preview -w apps/dilemma",
+    "preview:qa": "npm run preview:qa -w apps/dilemma",
+    "typecheck": "tsc -p apps/dilemma/tsconfig.json --noEmit && tsc -p apps/stresst/tsconfig.json --noEmit",
+    "lint": "oxlint --deny-warnings apps/dilemma/src apps/dilemma/e2e apps/dilemma/vite.config.ts apps/dilemma/vitest.config.ts tools vitest.config.ts",
+    "test": "vitest run",
+    "test:stresst": "vitest run --config tools/qa/vitest.stresst.config.ts",
+    "bench:stresst": "vitest run --config tools/qa/vitest.stresst-bench.config.ts",
+    "e2e": "playwright test -c apps/dilemma/e2e/playwright.config.ts",
+    "budgets": "node tools/bench/budgets.mjs",
+    "i18n:scan": "node tools/i18n/scan.mjs",
+    "regress": "node tools/qa/regress.mjs",
+    "stresst:baseline": "node tools/assets/stresst-baseline.mjs --write",
+    "stresst:verify": "node tools/assets/stresst-baseline.mjs --verify",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build:qa && npm run build && npm run budgets && npm run i18n:scan"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.7",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.4",
+    "oxlint": "^1.87.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
   }
 }

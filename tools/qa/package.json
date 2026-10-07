@@ -1,0 +1,10 @@
+{
+  "name": "@dilemma/tools-qa",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Regression list runner (plan/R-LIST.yaml) and sTressT vitest configs.",
+  "dependencies": {
+    "yaml": "^2.8.0"
+  }
+}
