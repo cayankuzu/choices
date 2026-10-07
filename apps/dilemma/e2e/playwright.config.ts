@@ -44,10 +44,9 @@ export default defineConfig({
         },
       },
     },
-    {
-      name: "webkit",
-      use: { ...devices["Desktop Safari"] },
-    },
+    // WebKit only in CI or on request: on Windows, Smart App Control blocks Playwright's unsigned
+    // JavaScriptCore.dll on every launch and floods the user with security notifications.
+    ...(process.env.CI || process.env.PW_WEBKIT === "1" ? [{ name: "webkit", use: { ...devices["Desktop Safari"] } }] : []),
   ],
   webServer: {
     command: "npm run preview:qa",
